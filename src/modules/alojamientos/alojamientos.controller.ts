@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBody, ApiCookieAuth, ApiCreatedResponse, ApiN
 import { randomUUID } from 'crypto';
 import { AlojamientosService } from './alojamientos.service';
 import { validateContract } from './contract';
+import { UnauthorizedException } from '@nestjs/common';
 import { AdminAccommodationDto, PatchAccommodationDto, AccommodationFilterDto } from './dto/admin-accommodation.dto';
 
 const wrap = (data: any) => ({ request_id: randomUUID(), data, next_page: null });
@@ -35,6 +36,14 @@ export class AlojamientosController {
   @Get('auth/me')
   @ApiCookieAuth()
   async me(@Req() req: any) { return this.service.auth(req); }
+  @Get('auth/session')
+  async session(@Req() req: any) {
+    try { return { user: await this.service.auth(req) }; }
+    catch (error) {
+      if (error instanceof UnauthorizedException) return { user: null };
+      throw error;
+    }
+  }
   @Get('catalog')
   async catalog(@Query() query: AccommodationFilterDto) { return wrap(await this.service.catalog(false, query.nombre)); }
   @Get('catalog/:id')

@@ -41,6 +41,12 @@ async function api(path, body, token, method = body === undefined ? 'GET' : 'POS
   const responseAjv = new Ajv({ strict: false, allErrors: true }); addFormats(responseAjv);
   responseAjv.addSchema({ $id: 'own-contract', components: ownContract.components });
   function conforms(name, body) { const validate = responseAjv.compile({ $ref: 'own-contract#/components/schemas/' + name }); check(validate(body), 'Respuesta real cumple contrato propio: ' + name + (validate.errors ? JSON.stringify(validate.errors) : '')); }
+  const guestSession = await api('auth/session');
+  check(guestSession.status === 200 && guestSession.body.user === null, 'Visitante consulta sesión sin generar HTTP 401');
+  conforms('SessionResponse', guestSession.body);
+  check((await api('auth/session', undefined, 'token-invalido')).body.user === null, 'Sesión inválida se representa como visitante');
+  const favicon = await fetch('http://127.0.0.1:' + port + '/favicon.ico');
+  check(favicon.status === 200 && favicon.headers.get('content-type').includes('image/svg+xml'), 'Icono de pestaña disponible sin HTTP 404');
   const catalog = (await api('catalog')).body.data;
   check(catalog.length === 6, 'Catálogo inicial de seis alojamientos');
   check((await api('admin/accommodations')).status === 401, 'Administración exige autenticación');
@@ -65,6 +71,9 @@ async function api(path, body, token, method = body === undefined ? 'GET' : 'POS
   check((await api('auth/me', undefined, revocable)).status === 401, 'Logout revoca un JWT aún no vencido');
   const a = (await api('auth/register', { name: 'Cliente Uno', email: 'uno@test.local', password: 'ClienteDemo2026!' })).body.access_token;
   const b = (await api('auth/register', { name: 'Cliente Dos', email: 'dos@test.local', password: 'ClienteDemo2026!' })).body.access_token;
+  const authenticatedSession = (await api('auth/session', undefined, a)).body;
+  check(authenticatedSession.user.role === 'customer', 'Consulta de sesión conserva la identidad del viajero');
+  conforms('SessionResponse', authenticatedSession);
   check((await api('admin/accommodations', undefined, a)).status === 403, 'Cliente no puede administrar');
   check((await api('auth/register', { name: 'Hack', email: 'hack@test.local', password: 'ClienteDemo2026!', role: 'admin' })).body.user.role === 'customer', 'Registro no permite escalar privilegios');
   const start = new Date(); start.setUTCDate(start.getUTCDate() + 30); const end = new Date(start); end.setUTCDate(end.getUTCDate() + 2);
@@ -151,6 +160,20 @@ async function api(path, body, token, method = body === undefined ? 'GET' : 'POS
   check((await api('admin/erp/dashboard',undefined,a)).status===403,'Dashboard protegido por rol');
   const dashboard=(await api('admin/erp/dashboard',undefined,admin)).body;
   check(dashboard.indicadores.ciudades===6,'Dashboard usa destinos persistidos');
+  const adminBody = {nombre:'Administrador adicional',correo:'admin-adicional@test.local',rol:'admin',activo:true,contrasena:'AdminAdicional2026!'};
+  check((await api('admin/erp/usuarios',adminBody)).status===401,'Crear administrador exige sesión');
+  check((await api('admin/erp/usuarios',adminBody,a)).status===403,'Un viajero no puede crear administradores');
+  const additionalAdmin=(await api('admin/erp/usuarios',adminBody,admin)).body;
+  check(!!additionalAdmin.id&&additionalAdmin.rol==='admin'&&!additionalAdmin.hash_contrasena,'Administrador crea otro administrador sin exponer credenciales');
+  conforms('AdminUserView', additionalAdmin);
+  const additionalToken=(await api('auth/login',{email:adminBody.correo,password:adminBody.contrasena})).body.access_token;
+  check((await api('admin/erp/usuarios',undefined,additionalToken)).status===200,'Nuevo administrador accede a gestión de usuarios');
+  const delegatedAdmin=(await api('admin/erp/usuarios',{...adminBody,nombre:'Administrador delegado',correo:'admin-delegado@test.local'},additionalToken)).body;
+  check(delegatedAdmin.rol==='admin','Nuevo administrador puede crear más administradores');
+  check((await api('admin/erp/usuarios/'+additionalAdmin.id,{rol:'admin'},a,'PATCH')).status===403,'Un viajero no puede asignar el rol administrador');
+  await api('admin/erp/usuarios/'+delegatedAdmin.id,{activo:false},admin,'PATCH');
+  await api('admin/erp/usuarios/'+additionalAdmin.id,{activo:false},admin,'PATCH');
+  check((await api('auth/me',undefined,additionalToken)).status===401,'Desactivar administrador nuevo revoca su sesión');
   const user=(await api('admin/erp/usuarios',{nombre:'Prueba ERP',correo:'erp@test.local',rol:'customer',activo:true,contrasena:'PasswordERP2026!'},admin)).body;
   check(!!user.id&&!user.passwordHash&&!user.hash_contrasena,'Usuario creado sin exponer hash');
   check((await api('admin/erp/usuarios',{nombre:'Duplicado',correo:'ERP@test.local',rol:'customer',activo:true,contrasena:'PasswordERP2026!'},admin)).status===409,'Correo normalizado y duplicados rechazados');

@@ -37,7 +37,7 @@ export default function RecordForm({ resource, record = {}, onClose }) {
       <h2 className="modal-title">
         {record.id ? 'Editar' : 'Crear'}{' '}
         {
-          { usuarios: 'usuario', gastos: 'gasto', categorias: 'categoría', ciudades: 'destino' }[
+          { usuarios: !record.id && record.rol === 'admin' ? 'administrador' : 'usuario', gastos: 'gasto', categorias: 'categoría', ciudades: 'destino' }[
             resource
           ]
         }
@@ -75,7 +75,12 @@ export default function RecordForm({ resource, record = {}, onClose }) {
               {field('nombre', 'Nombre', 'text', { minLength: 2, maxLength: 100, pattern: namePattern, title: nameHelp, onInput: restrictNameInput, 'aria-describedby': 'erp-name-help' })}
               <small id="erp-name-help" className="muted wide">{nameHelp}</small>
               {field('correo', 'Correo', 'email', { maxLength: 254, title: emailHelp, onInput: validateUserInput })}
-              {select(
+              {!record.id && record.rol === 'admin' ? (
+                <>
+                  <input type="hidden" name="rol" value="admin" />
+                  <p className="notice wide">Rol: Administrador. Esta cuenta tendrá acceso al centro de operaciones.</p>
+                </>
+              ) : select(
                 'rol',
                 'Rol',
                 [

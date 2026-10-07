@@ -1,7 +1,26 @@
 ﻿import { describe, it, expect } from 'vitest';
 import { createRequire } from 'node:module';
+import { vi } from 'vitest';
 const require = createRequire(import.meta.url);
-const { erpMetrics } = require('../../dist/modules/alojamientos/erp.service');
+const { erpMetrics, ErpService } = require('../../dist/modules/alojamientos/erp.service');
+describe('Permisos de gestión de usuarios', () => {
+  it('rechaza a un viajero antes de guardar o abrir una transacción', async () => {
+    const database = { transaction: vi.fn() };
+    const service = new ErpService(database);
+    await expect(service.saveUser({ rol: 'admin' }, { id: 'cliente', role: 'customer' })).rejects.toThrow('Solo un administrador');
+    expect(database.transaction).not.toHaveBeenCalled();
+  });
+  it.each([
+    { role: 'customer', activo: true },
+    { role: 'admin', activo: false },
+    null,
+  ])('revalida el rol y estado persistidos del actor: %j', async account => {
+    const em = { findOneBy: vi.fn().mockResolvedValue(account), save: vi.fn() };
+    const service = new ErpService({ transaction: fn => fn(em) });
+    await expect(service.saveUser({ rol: 'admin' }, { id: 'antiguo-admin', role: 'admin' })).rejects.toThrow('administradora activa');
+    expect(em.save).not.toHaveBeenCalled();
+  });
+});
 describe('Indicadores ERP', () => {
   const cities = [
       { id: 1, name: 'Quito' },

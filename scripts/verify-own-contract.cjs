@@ -8,7 +8,7 @@ const base = 'https://booking-prototipo-alojamientos.vercel.app';
   const yaml = await response.text();
   assert.equal(yaml, fs.readFileSync('contracts/kawsay-estancias-openapi.yaml', 'utf8'));
   const contract = parse(yaml);
-  assert.equal(contract.info.version, '1.2.0');
+  assert.equal(contract.info.version, '1.3.0');
   assert.ok(contract.info.title.includes('contrato propio'));
   console.log('OK YAML propio publicado: ' + Object.keys(contract.paths).length + ' rutas');
   const operational = await (await fetch(base + '/api/openapi.json')).json();

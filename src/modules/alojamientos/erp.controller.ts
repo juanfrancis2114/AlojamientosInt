@@ -14,6 +14,7 @@ import {
 import { ApiBearerAuth, ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import { AlojamientosService } from './alojamientos.service';
 import { ErpService } from './erp.service';
+import { validateContract } from './contract';
 import {
   CiudadDto,
   EditarCiudadDto,
@@ -45,7 +46,9 @@ export class ErpController {
     return this.erp.users();
   }
   @Post('usuarios') async createUser(@Req() req: any, @Body() body: UsuarioDto) {
-    return this.erp.saveUser(body, await this.auth.auth(req, true));
+    const actor = await this.auth.auth(req, true);
+    validateContract('AdminUserCreate', body);
+    return this.erp.saveUser(body, actor);
   }
   @Patch('usuarios/:id') async updateUser(
     @Req() req: any,

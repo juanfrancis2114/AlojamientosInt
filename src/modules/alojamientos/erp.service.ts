@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ConflictException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { Database } from './database';
@@ -128,7 +129,11 @@ export class ErpService {
     }));
   }
   async saveUser(input: any, actor: any, id?: string) {
+    if (actor?.role !== 'admin') throw new ForbiddenException('Solo un administrador puede gestionar usuarios');
     return this.database.transaction(async (em) => {
+      const administrator = await em.findOneBy<any>('users', { id: actor.id });
+      if (!administrator?.activo || administrator.role !== 'admin')
+        throw new ForbiddenException('Se requiere una cuenta administradora activa');
       const previous = id ? await em.findOneBy<any>('users', { id }) : null;
       if (id && !previous) throw new NotFoundException('Usuario no encontrado');
       const user = {

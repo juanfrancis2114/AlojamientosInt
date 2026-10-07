@@ -1,8 +1,8 @@
 # Contrato propio de Kawsay Estancias
 
-Fuente: `contracts/kawsay-estancias-openapi.yaml`, OpenAPI 3.0.3, versión 1.2.0.
+Fuente: `contracts/kawsay-estancias-openapi.yaml`, OpenAPI 3.0.3, versión 1.3.0.
 
-Este contrato fue diseñado para el núcleo REST del proyecto. Sus 25 rutas y 32 esquemas documentan las solicitudes, respuestas, autenticación y reglas propias. Conserva nombres de operaciones compatibles con la plantilla académica, pero no importa sus esquemas ni usa servidores ficticios de Booking Hub.
+Este contrato fue diseñado para el núcleo REST del proyecto. Sus 27 rutas y 35 esquemas documentan las solicitudes, respuestas, autenticación y reglas propias. Conserva nombres de operaciones compatibles con la plantilla académica, pero no importa sus esquemas ni usa servidores ficticios de Booking Hub.
 
 ## Decisiones propias verificables
 
@@ -11,6 +11,7 @@ Este contrato fue diseñado para el núcleo REST del proyecto. Sus 25 rutas y 32
 - La respuesta de confirmación devuelve `locator`, el código de reserva `BP-XXXXXXXX`, junto con fechas, importe y estado.
 - Confirmar, modificar y cancelar requieren `Idempotency-Key`. Repetir una solicitud con la misma clave no crea otra reserva.
 - La autenticación usa JWT Bearer o cookie HttpOnly y sesiones revocables; OAuth2 externo es futuro.
+- Solo un administrador activo puede crear más administradores mediante `POST /admin/erp/usuarios`. El servicio comprueba nuevamente su rol y estado desde la base de datos dentro de la transacción. El registro público siempre crea viajeros.
 - Se consulta el outbox y se registran suscripciones HTTPS para integración futura. El envío automático todavía no está implementado.
 
 ## Demostración para el profesor
@@ -23,3 +24,9 @@ Este contrato fue diseñado para el núcleo REST del proyecto. Sus 25 rutas y 32
 6. Explicar que otro sistema puede descargar el contrato para desarrollar su cliente y que un futuro worker podrá entregar los eventos ya persistidos.
 
 El documento operativo `/api/openapi.json` combina este contrato del núcleo con los DTO de las extensiones administrativas. La arquitectura es híbrida: núcleo guiado por contrato y extensiones documentadas por código. La plantilla se utilizó inicialmente; este contrato propio se formalizó durante la evolución del proyecto. Para sostener el enfoque de contrato primero en cambios futuros, editar y revisar el YAML antes de modificar esas operaciones.
+
+## Ejemplo de evolución con contrato primero
+
+La revisión 1.3.0 añade la definición explícita de creación de administradores. El commit `fb0b11f` registra `AdminUserCreate`, `AdminUserView`, la operación y sus permisos antes de implementar el botón dedicado, la revalidación transaccional y las pruebas de esta mejora.
+
+Para probarla: iniciar sesión como administrador, abrir Usuarios y pulsar Crear administrador. Completar nombre, correo y contraseña. La cuenta creada puede acceder al centro de operaciones y crear otros administradores. Un viajero recibe HTTP 403 al llamar al mismo endpoint y una solicitud sin sesión recibe HTTP 401.

@@ -181,6 +181,12 @@ export default function Management({ tab }) {
           </p>
         </div>
         {!['bookings', 'audit'].includes(tab) && (
+          <div className="form-actions">
+          {tab === 'usuarios' && user?.role === 'admin' && (
+            <button id="create-admin" className="button outline" onClick={() => setEdit({ rol: 'admin' })}>
+              + Crear administrador
+            </button>
+          )}
           <button
             id={tab === 'properties' ? 'new-hotel' : undefined}
             className="button primary"
@@ -197,6 +203,7 @@ export default function Management({ tab }) {
                     ? 'Crear destino'
                     : 'Crear categoría'}
           </button>
+          </div>
         )}
       </div>
       <ResourceState resource={resource}>

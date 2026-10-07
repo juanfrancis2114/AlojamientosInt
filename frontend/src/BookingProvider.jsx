@@ -21,12 +21,12 @@ export default function BookingProvider({ children }) {
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
   useEffect(() => {
     let active = true;
-    api('auth/me')
+    api('auth/session')
       .then((value) => {
-        if (active) setUser(value);
+        if (active) setUser(value.user);
       })
       .catch((error) => {
-        if (active && error.status !== 401) notify(error.message);
+        if (active) notify(error.message);
       })
       .finally(() => {
         if (active) setAuthLoading(false);

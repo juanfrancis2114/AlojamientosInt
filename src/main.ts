@@ -152,6 +152,7 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document, { ui: false });
   app.use('/swagger', serveStatic(join(process.cwd(), 'public/swagger')));
   const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.get('/favicon.ico', (_req: any, res: any) => res.redirect(308, '/favicon.svg'));
   expressApp.get(['/api/docs', '/api/docs/'], (_req: any, res: any) => res.sendFile(join(process.cwd(), 'public/swagger/index.html')));
   expressApp.get('/api/openapi.json', (_req: any, res: any) => res.json(document));
   expressApp.get('/api/contrato.yaml', (_req: any, res: any) =>
