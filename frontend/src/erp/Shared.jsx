@@ -10,6 +10,7 @@ export const labels = {
   customer: 'Viajero',
   ACCOMMODATION_CREATED: 'Alojamiento creado',
   ACCOMMODATION_UPDATED: 'Alojamiento actualizado',
+  GALLERY_UPDATED:'Galería actualizada',
   ACCOMMODATION_DELETED: 'Alojamiento eliminado',
   ORDER_CONFIRMED: 'Reserva confirmada',
   ORDER_CANCELLED: 'Reserva cancelada',

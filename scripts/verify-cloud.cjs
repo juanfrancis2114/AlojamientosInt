@@ -37,6 +37,11 @@ async function api(path, body, token, method = body === undefined ? 'GET' : 'POS
   const h = (await api('admin/accommodations', hotel, token)).data;
   check(!!h.id, 'CRUD: creación en Supabase');
   try {
+    const gallery=(await api('catalog/'+h.id+'/gallery')).data;
+    check(gallery.length===4&&new Set(gallery.map(i=>i.url)).size===4,'Cuatro imágenes diferentes persistidas por alojamiento');
+    const imagenes=[gallery[1],gallery[0],gallery[2],gallery[3]].map(({url,descripcion,autor,licencia,fuente,licencia_url})=>({url,descripcion,autor,licencia,fuente,licencia_url}));
+    await api('admin/accommodations/'+h.id+'/gallery',{imagenes},token,'PUT');
+    check((await api('catalog/'+h.id+'/gallery')).data[0].url===imagenes[0].url,'Edición y orden de galería persistidos en Supabase');
     await api('admin/accommodations/' + h.id, { precioPorNoche: 28.55 }, token, 'PATCH');
     check((await api('admin/accommodations/' + h.id, undefined, token)).data.precioPorNoche === 28.55, 'CRUD: edición y lectura persistentes');
   } finally { await api('admin/accommodations/' + h.id, undefined, token, 'DELETE'); }
@@ -46,7 +51,10 @@ async function api(path, body, token, method = body === undefined ? 'GET' : 'POS
   check(destinations.length===222,'222 cantones públicos de Ecuador');
   check(hotels.length===270&&destinations.every(c=>hotels.some(h=>h.cityId===c.id)),'270 alojamientos y cobertura de cada cantón');
   check(new Set(hotels.map(h=>h.image)).size===270,'Fotografías distintas en el catálogo');
-  const schema=(await api('admin/erp/esquema',undefined,token)).data;check(schema.tablas===27&&schema.relaciones===31&&schema.detalle.every(t=>t.rls),'Supabase real: 27 tablas, 31 relaciones y RLS');
+  const schema=(await api('admin/erp/esquema',undefined,token)).data;check(schema.tablas===28&&schema.relaciones===32&&schema.detalle.every(t=>t.rls),'Supabase real: 28 tablas, 32 relaciones y RLS');
+  const galleries=[];
+  for(let offset=0;offset<hotels.length;offset+=10)galleries.push(...await Promise.all(hotels.slice(offset,offset+10).map(async h=>(await api('catalog/'+h.id+'/gallery')).data)));
+  check(galleries.every(g=>g.length===4)&&new Set(galleries.flat().map(i=>i.url)).size===1080,'Catálogo completo: 1080 imágenes distintas en 270 galerías');
   const current=(await api('auth/me',undefined,token)).data;
   const privateOrders=await fetch(base+'/api/v1/orders',{headers:{Authorization:'Bearer '+token}});
   check(privateOrders.status===403,'Administrador sin reservas personales');

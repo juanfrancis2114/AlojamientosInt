@@ -20,7 +20,7 @@ Las facturas son **simuladas**, con impuestos de demostración en cero: no tiene
 | detalles_factura | Noches, cantidad de habitaciones, precio unitario y subtotal |
 | resenas_estancia | Una por reserva; viajero, alojamiento y administrador que responde |
 
-La migración `004_estancias.sql` conserva los datos existentes. El esquema completo tiene **27 tablas y 31 claves foráneas**, todas con RLS. Los roles públicos `anon` y `authenticated` no acceden directamente a estas tablas; NestJS aplica autenticación y autorización. La emisión/actualización de factura ocurre dentro de la transacción de la reserva. El calendario revalida inventario y precios al cotizar y confirmar.
+La migración `004_estancias.sql` conserva los datos existentes. El esquema completo tiene **28 tablas y 32 claves foráneas**, todas con RLS. Los roles públicos `anon` y `authenticated` no acceden directamente a estas tablas; NestJS aplica autenticación y autorización. La emisión/actualización de factura ocurre dentro de la transacción de la reserva. El calendario revalida inventario y precios al cotizar y confirmar.
 
 ## API y pruebas
 

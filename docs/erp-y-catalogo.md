@@ -24,7 +24,7 @@ Todas requieren sesión activa y rol administrativo comprobado en la base. No ex
 | `/categorias`, `/categorias/:id` | GET, POST; PATCH, DELETE | Nombre único; no elimina categorías con gastos |
 | `/ciudades`, `/ciudades/:id` | GET, POST; PATCH, DELETE | Código cantonal único, coordenadas válidas; no elimina destinos con alojamientos |
 
-Gastos y categorías se incorporaron en la migración 003. La migración 004 añade perfiles, calendario, facturas, detalles y reseñas de estancia: el modelo actual tiene 27 tablas, 31 claves foráneas, RLS y permisos restringidos a través del backend. Ambas migraciones conservan registros anteriores y son repetibles. Auditoría registra acciones administrativas en la misma transacción.
+Gastos y categorías se incorporaron en la migración 003. La migración 004 añade perfiles, calendario, facturas, detalles y reseñas de estancia: el modelo actual tiene 28 tablas, 32 claves foráneas, RLS y permisos restringidos a través del backend. Ambas migraciones conservan registros anteriores y son repetibles. Auditoría registra acciones administrativas en la misma transacción.
 
 ## Cálculos del dashboard
 

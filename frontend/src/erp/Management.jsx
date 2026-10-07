@@ -122,6 +122,12 @@ export default function Management({ tab }) {
                 <button data-edit={h.id} onClick={() => open({ kind: 'hotel-form', hotel: h })}>
                   Editar
                 </button>
+                <button
+                  data-gallery={h.id}
+                  onClick={() => open({ kind: 'gallery-form', hotel: h })}
+                >
+                  Imágenes
+                </button>
                 <ActionButton
                   className=""
                   onClick={async () => {

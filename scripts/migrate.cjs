@@ -14,6 +14,7 @@ const fs = require('fs');
     }
     await client.query(fs.readFileSync('supabase/migrations/003_erp.sql', 'utf8'));
     await client.query(fs.readFileSync('supabase/migrations/004_estancias.sql', 'utf8'));
-    console.log('Migraciones aplicadas: 27 tablas en español, ERP y usuarios activos. Datos conservados.');
+    await client.query(fs.readFileSync('supabase/migrations/005_galerias.sql', 'utf8'));
+    console.log('Migraciones aplicadas: 28 tablas en español, ERP y galerías. Datos conservados.');
   } finally { await client.end(); }
 })().catch(e => { console.error('No se aplicó la migración:', e.message.replace(/postgres(?:ql)?:\/\/[^\s]+/g, '[URL oculta]')); process.exitCode = 1; });

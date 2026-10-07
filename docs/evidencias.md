@@ -101,3 +101,12 @@ Verificación pública: 2026-10-07T13:11:43.683Z.
 - 40 comprobaciones públicas superadas; Chrome verifica módulos nuevos, perfil, vistas protegidas y móvil sin desbordamiento. Swagger renderizado y health ejecutado con HTTP 200.
 
 Las evidencias anteriores documentan el catálogo previo; el estado actual es el descrito en esta ampliación. Las reservas de verificación se cancelaron y sus cuentas se desactivaron.
+
+
+## Galerías — 7 de octubre de 2026
+
+- Publicación Vercel dpl_8vgegZiGuT4NJGefWyoKQZ6GpWg4 operativa.
+- Supabase: 28 tablas, 32 claves foráneas y RLS; 270 galerías con 1080 URLs distintas verificadas en producción.
+- 30 pruebas unitarias, 140 comprobaciones de API, restricciones PostgreSQL y catálogo nacional aprobados.
+- Chrome: selección de imágenes, edición y orden persistido, desplazamiento hasta disponibilidad y móvil comprobados.
+- Producción: 43 comprobaciones de API aprobadas y recorrido React sin errores.

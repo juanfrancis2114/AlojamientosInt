@@ -3,6 +3,7 @@ import { DataSource, EntitySchema, EntityManager } from 'typeorm';
 import { mkdirSync } from 'fs';
 import { nombresTablas, nombresColumnas } from './nombres-base';
 import { migrationEstancias } from './migration-estancias';
+import { migrationGalerias } from './migration-galerias';
 
 const id = { type: Number, primary: true, generated: true };
 const uuid = { type: String, primary: true };
@@ -11,8 +12,9 @@ const num = { type: Number };
 const amount = { type: 'decimal', precision: 12, scale: 2, transformer: { to: (v: number) => v, from: (v: string) => Number(v) } };
 const json = { type: 'simple-json' };
 const rel = (table: string, column: string) => ({ type: 'many-to-one', target: table, joinColumn: { name: nombresColumnas[column] || column }, onDelete: 'RESTRICT' });
-const schema = (name: string, columns: any, relations: any = {}) => new EntitySchema<any>({ name, tableName: nombresTablas[name] || name, columns: Object.fromEntries(Object.entries(columns).map(([key, value]) => [key, { ...(value as any), name: nombresColumnas[key] || key }])), relations });
+const schema = (name: string, columns: any, relations: any = {},uniques:any[]=[]) => new EntitySchema<any>({ name, tableName: nombresTablas[name] || name, columns: Object.fromEntries(Object.entries(columns).map(([key, value]) => [key, { ...(value as any), name: nombresColumnas[key] || key }])), relations,uniques });
 export const tables = [
+  schema('imagenes_alojamiento',{id:uuid,alojamiento_id:num,orden:num,url:text,descripcion:text,autor:text,licencia:text,fuente:text,licencia_url:text,fecha_creacion:text},{alojamiento:rel('accommodations','alojamiento_id')},[{columns:['alojamiento_id','orden']},{columns:['alojamiento_id','url']}]),
   schema('users', { id: uuid, email: { ...text, unique: true }, name: text, passwordHash: text, role: text, createdAt: text, activo: { type: Boolean, default: true } }),
   schema('sessions', { id: uuid, userId: text, expiresAt: text }, { user: rel('users', 'userId') }),
   schema('cities', { id, name: text, country: text, codigo: { ...text, default: '' }, provincia: { ...text, default: '' }, region: { ...text, default: '' }, latitud: { ...num, type: 'double precision', default: 0 }, longitud: { ...num, type: 'double precision', default: 0 } }),
@@ -60,6 +62,7 @@ export class Database implements OnModuleInit, OnModuleDestroy {
     } : { type: 'sqljs', location: process.env.DATA_FILE || 'data/booking.sqlite', autoSave: true, entities: tables, synchronize: true });
     await this.db.initialize();
     if(postgres&&process.env.APPLY_DEMO_UPGRADE==='true')await this.db.transaction(async em=>{await em.query('SELECT pg_advisory_xact_lock(73123321)');const result=await em.query("SELECT to_regclass('public.resenas_estancia') AS name");if(!result[0].name){await em.query(migrationEstancias);console.log('Migración aditiva de estancias aplicada desde la nube');}});
+    if(postgres&&process.env.APPLY_DEMO_UPGRADE==='true')await this.db.transaction(async em=>{await em.query('SELECT pg_advisory_xact_lock(73123321)');const result=await em.query("SELECT to_regclass('public.imagenes_alojamiento') AS name");if(!result[0].name){await em.query(migrationGalerias);console.log('Tabla de galerías aplicada desde la nube');}});
     if (!postgres) await this.db.getRepository('transaction_lock').save({ id: 1, version: 0 });
     else if (!await this.db.getRepository('transaction_lock').findOneBy({ id: 1 })) throw new Error('Falta aplicar la migración inicial y su fila de control');
   }

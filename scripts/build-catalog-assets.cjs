@@ -4,3 +4,8 @@ if(photos.length<270)throw new Error('Se necesitan 270 fotografías adecuadas di
 fs.writeFileSync('src/modules/alojamientos/catalog-photos.ts','// Fotografías de Wikimedia Commons; créditos conservados en photos.caption.\nexport const catalogPhotos='+JSON.stringify(photos)+';\n');
 const sql=fs.readFileSync('supabase/migrations/004_estancias.sql','utf8').replace(/^BEGIN;\s*/,'').replace(/COMMIT;\s*$/,'');
 fs.writeFileSync('src/modules/alojamientos/migration-estancias.ts','// Generado desde 004_estancias.sql para la actualización controlada en nube.\nexport const migrationEstancias='+JSON.stringify(sql)+';\n');
+const galleryPhotos=JSON.parse(fs.readFileSync('resources/fotos-galeria.json','utf8')).filter(require('./photo-is-suitable.cjs'));
+if(new Set(galleryPhotos.map(p=>p.url)).size<1080)throw new Error('Se requieren al menos 1080 fotografías distintas para las galerías');
+fs.writeFileSync('src/modules/alojamientos/gallery-photos.ts','// Galerías ilustrativas con fotografías de licencia abierta.\nexport const galleryPhotos='+JSON.stringify(galleryPhotos)+';\n');
+const gallerySql=fs.readFileSync('supabase/migrations/005_galerias.sql','utf8').replace(/^BEGIN;\s*/,'').replace(/COMMIT;\s*$/,'');
+fs.writeFileSync('src/modules/alojamientos/migration-galerias.ts','// Generado desde 005_galerias.sql.\nexport const migrationGalerias='+JSON.stringify(gallerySql)+';\n');

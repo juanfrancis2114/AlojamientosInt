@@ -6,24 +6,8 @@ import { useBooking } from './context';
 import { ActionButton, AsyncForm, Modal } from './components';
 import Login from './Login';
 import { hotelPayload, money, searchInput } from './utils';
-function PhotoCredit({ photo }) {
-  let credit;
-  try {
-    credit = JSON.parse(photo?.caption || '');
-  } catch {
-    return null;
-  }
-  if (!credit.source?.startsWith('https://commons.wikimedia.org/')) return null;
-  return (
-    <p className="muted photo-credit">
-      Foto ilustrativa: {credit.author} ·{' '}
-      <a href={credit.source} target="_blank" rel="noreferrer">
-        Wikimedia Commons, {credit.license}
-      </a>
-      . No corresponde a un alojamiento real del catálogo.
-    </p>
-  );
-}
+import AccommodationGallery from './AccommodationGallery';
+import GalleryForm from './erp/GalleryForm';
 
 function HotelDetails({ hotel: initialHotel }) {
   const { search, user, open } = useBooking();
@@ -51,8 +35,7 @@ function HotelDetails({ hotel: initialHotel }) {
     );
   return (
     <>
-      <img className="modal-image" src={hotel.image} alt={hotel.nombre} />
-      <PhotoCredit photo={hotel.photos?.[0]} />
+      <AccommodationGallery key={hotel.id} hotel={hotel} />
       <p className="eyebrow dark mt-4">
         {hotel.destino} · {hotel.tipo}
       </p>
@@ -474,6 +457,9 @@ export default function Dialogs() {
       break;
     case 'checkout':
       content = <Checkout hotel={modal.hotel} quote={modal.quote} />;
+      break;
+    case 'gallery-form':
+      content = <GalleryForm hotel={modal.hotel} />;
       break;
     case 'hotel-form':
       content = <HotelForm hotel={modal.hotel} />;

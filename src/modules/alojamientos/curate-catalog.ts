@@ -92,6 +92,7 @@ export async function curateCatalog(em: EntityManager) {
   if (photoUpdates.length) await em.save('photos', photoUpdates, { chunk: 100 });
   if (retired.length) await em.update('accommodations', { id: In(retired) }, { published: false });
   if (removable.length) {
+    await em.delete('imagenes_alojamiento',{alojamiento_id:In(removable)});
     const roomIds = rooms.filter((r) => removable.includes(r.accommodationId)).map((r) => r.id);
     if (roomIds.length) await em.delete('rate_plans', { roomTypeId: In(roomIds) });
     for (const table of ['room_types', 'photos', 'reviews', 'accommodation_facilities'])

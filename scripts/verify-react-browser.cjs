@@ -17,6 +17,14 @@ if (!base || !/^https:\/\/[^/]+\.vercel\.app$/.test(base)) throw new Error('Indi
     const hotels = await page.locator('.hotel-card').count();
     await expect.poll(()=>page.locator('.hotel-card img').evaluateAll(images=>images.slice(0,6).filter(img=>img.naturalWidth>0).length),{timeout:30000}).toBe(6);
     await page.evaluate(() => document.fonts.ready);
+    await page.locator('.hotel-card').first().getByRole('button').click();
+    await expect(page.locator('.gallery-thumbnails button')).toHaveCount(4);
+    await page.locator('.gallery-thumbnails button').nth(2).click();
+    await expect(page.locator('.gallery-counter')).toHaveText('3 / 4');
+    await expect.poll(()=>page.locator('.stay-gallery-main img').evaluate(img=>img.naturalWidth),{timeout:30000}).toBeGreaterThan(0);
+    await page.locator('#availability').click();
+    await expect(page.locator('#availability-result')).toContainText('total',{timeout:30000});
+    await page.locator('#close-modal').click();
     fs.mkdirSync('artifacts', { recursive: true });
     await page.screenshot({ path: 'artifacts/cloud-react-desktop.png', fullPage: true });
     const resources = await page.evaluate(() => performance.getEntriesByType('resource').filter(entry => entry.name.includes('/assets/')).map(entry => ({ name: new URL(entry.name).pathname, durationMs: Math.round(entry.duration), transferBytes: entry.transferSize })));

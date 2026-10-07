@@ -15,7 +15,7 @@ flowchart LR
 
 React consume APIs del mismo origen mediante Fetch. React Router protege `/reservas` y `/admin`; las APIs vuelven a verificar permisos. CORS tiene una lista de orígenes exactos y credenciales habilitadas. Las contraseñas se derivan con scrypt y sal aleatoria; los JWT firmados con HS256 se almacenan hasheados para revocación, con vencimiento de una hora. Se verifican firma, algoritmo, emisor, audiencia e identidad; el rol actual se obtiene de la base. Las cookies son HttpOnly, SameSite Strict y Secure en Vercel. Cada operación administrativa verifica el rol en el servidor. Las reservas se consultan por propietario; conocer un UUID no concede acceso.
 
-## Modelo relacional: 27 tablas
+## Modelo relacional: 28 tablas
 
 | Tabla | Propósito | Relaciones principales |
 |---|---|---|
@@ -84,4 +84,4 @@ La migración `002_nombres_espanol.sql` renombra tablas y columnas sin borrar re
 
 El frontend usa `BookingProvider` y hooks para sesión, búsqueda, diálogos y actualización de datos. `useResource` gestiona cargas y errores. Administración y reservas se cargan con imports diferidos; Vite genera bundles minificados con hash. Bootstrap proporciona controles, tablas, alertas y utilidades; los estilos propios mantienen la identidad visual.
 
-Las cinco tablas de la migración 004 son perfiles_usuario, calendario_tarifas, facturas, detalles_factura y resenas_estancia. El esquema tiene 31 claves foráneas. Sus relaciones, reglas y endpoints se describen en [estancias](estancias.md).
+Las cinco tablas de la migración 004 son perfiles_usuario, calendario_tarifas, facturas, detalles_factura y resenas_estancia. La migración 005 añade imagenes_alojamiento y su relación con alojamientos. El esquema tiene 32 claves foráneas. Sus relaciones, reglas y endpoints se describen en [estancias](estancias.md) y [galerías](galerias.md).

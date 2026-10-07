@@ -15,6 +15,7 @@ import { seed, hashPassword } from './seed';
 import { JwtAuth } from './jwt-auth';
 import { expandCatalog } from './expand-catalog';
 import { curateCatalog } from './curate-catalog';
+import {fillGalleries,syncGallery} from './gallery';
 
 const now = () => new Date().toISOString();
 const expire = (minutes: number) => new Date(Date.now() + minutes * 60000).toISOString();
@@ -71,6 +72,7 @@ export class AlojamientosService implements OnModuleInit {
           console.log('Catálogo reducido:', JSON.stringify(result));
         }
       });
+    await this.database.transaction(async em=>{const marker='00000000-0000-4000-8000-000000000006';if(!await em.findOneBy('outbox_events',{id:marker})){const result=await fillGalleries(em);await em.save('outbox_events',{id:marker,eventType:'GALLERIES_INITIALIZED',resourceId:'galerias-v1',timestamp:now(),data:result,status:'PROCESSED'});console.log('Galerías inicializadas:',JSON.stringify(result));}});
   }
   async assertNoOverlap(
     em: EntityManager,
@@ -199,6 +201,7 @@ export class AlojamientosService implements OnModuleInit {
       score: reviews.length ? reviews.reduce((sum, r) => sum + r.score, 0) / reviews.length : null,
       reviews,
       photos: await em.findBy<any>('photos', { accommodationId: id }),
+      galeria:await em.find<any>('imagenes_alojamiento',{where:{alojamiento_id:id},order:{orden:'ASC'}}),
     };
   }
   async capacity(
@@ -686,8 +689,7 @@ export class AlojamientosService implements OnModuleInit {
       await em.delete('accommodation_facilities', { accommodationId: h.id });
       for (const facilityId of v.tienePiscina ? [1, 2] : [1])
         await em.save<any, any>('accommodation_facilities', { accommodationId: h.id, facilityId });
-      await em.delete('photos', { accommodationId: h.id });
-      await em.save<any, any>('photos', { accommodationId: h.id, url: v.image, caption: h.nombre });
+      if(!id||v.image!==old.image){const gallery=await syncGallery(em,h);await em.delete('photos', { accommodationId: h.id });await em.save<any,any>('photos',{accommodationId:h.id,url:v.image,caption:JSON.stringify({author:gallery[0].autor,license:gallery[0].licencia,source:gallery[0].fuente,licenseUrl:gallery[0].licencia_url})});}
       await em.save<any, any>('audit_logs', {
         id: randomUUID(),
         actorId: user.id,
@@ -722,6 +724,7 @@ export class AlojamientosService implements OnModuleInit {
       const room = await em.findOneBy<any>('room_types', { accommodationId: id });
       await em.delete('rate_plans', { roomTypeId: room.id });
       await em.delete('room_types', { accommodationId: id });
+      await em.delete('imagenes_alojamiento',{alojamiento_id:id});
       for (const table of ['photos', 'reviews', 'accommodation_facilities'])
         await em.delete(table, { accommodationId: id });
       await em.delete('accommodations', { id });

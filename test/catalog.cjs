@@ -10,6 +10,7 @@ const { Database } = require('../dist/modules/alojamientos/database');
 const { seed } = require('../dist/modules/alojamientos/seed');
 const { expandCatalog } = require('../dist/modules/alojamientos/expand-catalog');
 const { curateCatalog } = require('../dist/modules/alojamientos/curate-catalog');
+const {fillGalleries}=require('../dist/modules/alojamientos/gallery');
 const { catalogTarget } = require('../dist/modules/alojamientos/catalog-policy');
 (async () => {
   const db = new Database();
@@ -18,6 +19,11 @@ const { catalogTarget } = require('../dist/modules/alojamientos/catalog-policy')
     await db.transaction(seed);
     const first = await db.transaction(expandCatalog);
     await db.transaction(curateCatalog);
+    const galleries=await db.transaction(fillGalleries);
+    assert.equal(galleries.imagenes_insertadas,1080);
+    const images=await db.db.manager.find('imagenes_alojamiento');
+    assert.equal(new Set(images.map(i=>i.url)).size,1080);
+    assert.equal((await db.transaction(fillGalleries)).imagenes_insertadas,0);
     assert.equal(first.cantones, 222);
     const cities = await db.db.manager.find('cities'),
       hotels = await db.db.manager.find('accommodations');

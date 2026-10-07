@@ -29,7 +29,7 @@ async function api(path, body, token, method = body === undefined ? 'GET' : 'POS
     const url = new URL(databaseUrl);
     if (process.env.CI !== 'true' || url.pathname !== '/booking_test' || !['localhost', '127.0.0.1'].includes(url.hostname)) throw new Error('TEST_DATABASE_URL solo admite booking_test local en CI');
     const { Client } = require('pg'); const pg = new Client({ connectionString: databaseUrl }); await pg.connect();
-    try { await pg.query('CREATE ROLE anon; CREATE ROLE authenticated;'); await pg.query(fs.readFileSync('supabase/migrations/001_booking.sql', 'utf8')); await pg.query(fs.readFileSync('supabase/migrations/002_nombres_espanol.sql', 'utf8')); await pg.query(fs.readFileSync('supabase/migrations/003_erp.sql', 'utf8')); await pg.query(fs.readFileSync('supabase/migrations/004_estancias.sql', 'utf8')); }
+    try { await pg.query('CREATE ROLE anon; CREATE ROLE authenticated;'); await pg.query(fs.readFileSync('supabase/migrations/001_booking.sql', 'utf8')); await pg.query(fs.readFileSync('supabase/migrations/002_nombres_espanol.sql', 'utf8')); await pg.query(fs.readFileSync('supabase/migrations/003_erp.sql', 'utf8')); await pg.query(fs.readFileSync('supabase/migrations/004_estancias.sql', 'utf8')); await pg.query(fs.readFileSync('supabase/migrations/005_galerias.sql','utf8')); }
     finally { await pg.end(); }
   }
   startServer(); await waitReady();
@@ -226,6 +226,25 @@ async function api(path, body, token, method = body === undefined ? 'GET' : 'POS
   check((await api('orders/'+oid+'/invoice',undefined,winner.token)).body.estado==='ANULADA','Cancelación anula factura simulada');
   const calendarRows=(await api('admin/erp/tarifas',undefined,admin)).body;
   check((await api('admin/erp/tarifas/'+calendarRows[0].id,undefined,admin,'DELETE')).status===204,'Calendario permite restaurar tarifa base');
+  const publicGallery=(await api('catalog/1/gallery')).body;
+  check(publicGallery.length===4&&new Set(publicGallery.map(i=>i.url)).size===4,'Alojamiento ofrece cuatro imágenes distintas y ordenadas');
+  check(publicGallery.every((i,index)=>i.orden===index+1&&i.licencia&&i.fuente.startsWith('https://')),'Galería conserva orden y atribución');
+  check((await api('catalog/'+hid+'/gallery')).status===404,'Galería de alojamiento despublicado no se expone');
+  const photoHotel=(await api('admin/accommodations',{...h,nombre:'Galería editable prueba'},admin)).body;
+  const galleryEdit={imagenes:[0,1,2,3].map(i=>({url:'https://example.com/galeria-'+i+'.jpg',descripcion:'Imagen de prueba '+i,autor:'Autor prueba',licencia:'CC BY 4.0',fuente:'https://example.com/fuente',licencia_url:'https://creativecommons.org/licenses/by/4.0/'}))};
+  check(photoHotel.galeria.length===4,'Alta administrativa crea una galería de cuatro imágenes');
+  check((await api('admin/accommodations/'+photoHotel.id+'/gallery',galleryEdit,a,'PUT')).status===403,'Viajero no puede editar la galería');
+  check((await api('admin/accommodations/'+photoHotel.id+'/gallery',{imagenes:galleryEdit.imagenes.slice(0,3)},admin,'PUT')).status===400,'Galería exige exactamente cuatro imágenes');
+  check((await api('admin/accommodations/'+photoHotel.id+'/gallery',{imagenes:[galleryEdit.imagenes[0],...galleryEdit.imagenes.slice(0,3)]},admin,'PUT')).status===400,'Galería rechaza imágenes repetidas');
+  check((await api('admin/accommodations/'+photoHotel.id+'/gallery',{imagenes:galleryEdit.imagenes.map((img,i)=>i===0?{...img,url:'javascript:alert(1)'}:img)},admin,'PUT')).status===400,'Galería rechaza URL insegura');
+  check((await api('admin/accommodations/'+photoHotel.id+'/gallery',galleryEdit,admin,'PUT')).status===200,'Administrador reemplaza galería con créditos');
+  check((await api('catalog/'+photoHotel.id)).body.data.image===galleryEdit.imagenes[0].url,'Primera imagen se sincroniza con la portada');
+  await api('admin/accommodations/'+photoHotel.id,{nombre:'Galería renombrada'},admin,'PATCH');
+  check((await api('catalog/'+photoHotel.id+'/gallery')).body[1].autor==='Autor prueba','Editar alojamiento conserva galería y créditos');
+  check((await api('admin/accommodations/'+photoHotel.id,{image:galleryEdit.imagenes[2].url},admin,'PATCH')).status===200,'Portada existente reordena galería sin duplicar URLs');
+  check((await api('catalog/'+photoHotel.id+'/gallery')).body[0].url===galleryEdit.imagenes[2].url,'Cambio de portada se refleja inmediatamente en galería');
+  check((await api('admin/accommodations/'+photoHotel.id,undefined,admin,'DELETE')).status===204,'Baja sin historial elimina galería sin romper claves foráneas');
+  check((await api('admin/accommodations/'+photoHotel.id+'/gallery',undefined,admin)).status===404,'Galería eliminada ya no está accesible');
   console.log('\n'+passed+' comprobaciones superadas.');
 
 })().catch(e => { console.error(e); console.error(logs.slice(-2500)); process.exitCode = 1; }).finally(async () => { await stopServer(); if (fs.existsSync(file)) fs.unlinkSync(file); });

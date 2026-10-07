@@ -5,7 +5,7 @@ El proyecto **no cumple la condición habilitante** hasta que haya una URL públ
 ## 1. Crear Supabase y aplicar el esquema
 
 1. Crear un proyecto nuevo de Supabase y guardar la contraseña de la base de datos.
-2. Abrir SQL Editor y ejecutar las migraciones `001_booking.sql`, `002_nombres_espanol.sql`, `003_erp.sql` y `004_estancias.sql`, en ese orden. Crea 27 tablas, 31 claves foráneas, índices, restricciones y RLS. Usar un proyecto nuevo: no ejecutar en una base ajena al prototipo.
+2. Abrir SQL Editor y ejecutar las migraciones `001_booking.sql`, `002_nombres_espanol.sql`, `003_erp.sql`, `004_estancias.sql` y `005_galerias.sql`, en ese orden. Crea 28 tablas, 32 claves foráneas, índices, restricciones y RLS. Usar un proyecto nuevo: no ejecutar en una base ajena al prototipo.
 3. En **Connect**, elegir **Transaction pooler** y copiar la cadena PostgreSQL con puerto 6543. Reemplazar el marcador de contraseña; codificar caracteres especiales en la contraseña mediante URL encoding. Usar el usuario completo `postgres.<project-ref>` de la cadena.
 4. Configurar esa cadena únicamente en `DATABASE_URL` del servidor. Nunca en el código frontend, variables públicas ni Git.
 

@@ -39,7 +39,8 @@ Puedes crear tu cuenta de cliente desde la interfaz. El rol administrativo se ve
 - Producción: 222 cantones y 270 alojamientos ficticios; uno por cantón y cinco en doce destinos principales, con fotos distintas y créditos de Wikimedia Commons.
 - JWT HS256 con vencimiento y revocación, roles, aislamiento de reservas, contraseñas scrypt y cookie HttpOnly.
 - Swagger con esquemas del contrato original y validación AJV.
-- Modelo de 27 tablas relacionadas, migración PostgreSQL, índices, restricciones y RLS.
+- Modelo de 28 tablas relacionadas, migración PostgreSQL, índices, restricciones y RLS.
+- Cuatro imágenes por estancia, miniaturas y navegación; edición y orden desde el ERP. Ver [galerías](docs/galerias.md).
 - Auditoría y eventos outbox para integración futura.
 
 Los pagos son simulados y se identifican en la interfaz. OAuth2 externo y entrega de webhooks son integraciones futuras documentadas, no funcionalidades activas.
@@ -55,7 +56,7 @@ npm run test:postgres
 npm run test:catalog
 ```
 
-La prueba de API usa una base aislada y comprueba 125 escenarios, incluyendo persistencia tras detener e iniciar el servidor. La prueba PostgreSQL aplica la migración real en PGlite y verifica 27 tablas, 31 claves foráneas, permisos y restricciones. Para recorrer la interfaz con Chrome instalado:
+La prueba de API usa una base aislada y comprueba 140 escenarios, incluyendo persistencia tras detener e iniciar el servidor. La prueba PostgreSQL aplica la migración real en PGlite y verifica 28 tablas, 32 claves foráneas, permisos y restricciones. Para recorrer la interfaz con Chrome instalado:
 
 ```powershell
 npm run test:browser
@@ -92,7 +93,7 @@ src/main.ts                     HTTP, seguridad, Swagger y errores
 src/modules/alojamientos/
   alojamientos.controller.ts    Rutas, autenticación y validación de contrato
   alojamientos.service.ts       Disponibilidad, reservas, idempotencia y CRUD
-  database.ts                   27 esquemas TypeORM y transacciones
+  database.ts                   28 esquemas TypeORM y transacciones
   contract.ts                   Contrato original + AJV
   seed.ts                       Catálogos y datos de demostración
 contracts/                      Contratos originales de los cuatro dominios
