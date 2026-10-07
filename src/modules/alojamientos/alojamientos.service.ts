@@ -1,4 +1,4 @@
-﻿import { calendarDay, stayPrices, saveInvoice } from './stay-pricing';
+import { calendarDay, stayPrices, saveInvoice } from './stay-pricing';
 import {
   Injectable,
   OnModuleInit,
@@ -68,7 +68,7 @@ export class AlojamientosService implements OnModuleInit {
             data: result,
             status: 'PROCESSED',
           });
-          console.log('CatÃ¡logo reducido:', JSON.stringify(result));
+          console.log('Catálogo reducido:', JSON.stringify(result));
         }
       });
   }
@@ -95,17 +95,17 @@ export class AlojamientosService implements OnModuleInit {
     const token =
       req.headers.authorization?.replace(/^Bearer /, '') ||
       req.headers.cookie?.match(/(?:^|;\s*)booking_session=([^;]+)/)?.[1];
-    if (!token) throw new UnauthorizedException('Inicia sesiÃ³n para continuar');
+    if (!token) throw new UnauthorizedException('Inicia sesión para continuar');
     const claims = this.jwt.verify(token);
     const session = await this.database.db.manager.findOneBy<any>('sessions', {
       id: createHash('sha256').update(token).digest('hex'),
     });
     if (!session || session.expiresAt < now() || session.userId !== claims.sub)
-      throw new UnauthorizedException('SesiÃ³n vencida o revocada');
+      throw new UnauthorizedException('Sesión vencida o revocada');
     const user = await this.database.db.manager.findOneBy<any>('users', { id: session.userId });
     if (!user || !user.activo) throw new UnauthorizedException('Cuenta desactivada');
     if (admin && user.role !== 'admin')
-      throw new ForbiddenException('Acceso exclusivo para administraciÃ³n');
+      throw new ForbiddenException('Acceso exclusivo para administración');
     return { id: user.id, name: user.name, email: user.email, role: user.role };
   }
   async login(body: any, register = false) {
@@ -119,14 +119,14 @@ export class AlojamientosService implements OnModuleInit {
       body.password.length > 128
     )
       throw new BadRequestException(
-        'Correo vÃ¡lido y contraseÃ±a de 10 a 128 caracteres requeridos',
+        'Correo válido y contraseña de 10 a 128 caracteres requeridos',
       );
     return this.database.transaction(async (em) => {
       let user = await em.findOneBy<any>('users', { email });
       if (register) {
-        if (user) throw new ConflictException('El correo ya estÃ¡ registrado');
+        if (user) throw new ConflictException('El correo ya está registrado');
         if (typeof body.name !== 'string' || !body.name.trim() || body.name.length > 100)
-          throw new BadRequestException('Indica tu nombre (mÃ¡ximo 100 caracteres)');
+          throw new BadRequestException('Indica tu nombre (máximo 100 caracteres)');
         user = await em.save<any, any>('users', {
           id: randomUUID(),
           email,
@@ -141,7 +141,7 @@ export class AlojamientosService implements OnModuleInit {
         if (!timingSafeEqual(Buffer.from(stored, 'hex'), actual) || !user)
           throw new UnauthorizedException('Credenciales incorrectas');
         if (!user.activo)
-          throw new ForbiddenException('La cuenta estÃ¡ desactivada; contacta con administraciÃ³n');
+          throw new ForbiddenException('La cuenta está desactivada; contacta con administración');
       }
       const token = this.jwt.issue(user);
       await em.save<any, any>('sessions', {
@@ -168,9 +168,9 @@ export class AlojamientosService implements OnModuleInit {
       !isNaN(Date.parse(s)) &&
       new Date(s).toISOString().slice(0, 10) === s;
     if (!valid(checkin) || !valid(checkout) || checkin < calendarDay() || checkout <= checkin)
-      throw new BadRequestException('Fechas invÃ¡lidas: entrada desde hoy y salida posterior');
+      throw new BadRequestException('Fechas inválidas: entrada desde hoy y salida posterior');
     const nights = (Date.parse(checkout) - Date.parse(checkin)) / 86400000;
-    if (nights > 90) throw new BadRequestException('MÃ¡ximo 90 noches por reserva');
+    if (nights > 90) throw new BadRequestException('Máximo 90 noches por reserva');
     return nights;
   }
   async hotel(em: EntityManager, id: number) {
@@ -221,7 +221,7 @@ export class AlojamientosService implements OnModuleInit {
       g.number_of_adults > 100 ||
       (g.children || []).some((age: any) => !Number.isInteger(age) || age < 0 || age > 17)
     )
-      throw new BadRequestException('HuÃ©spedes invÃ¡lidos');
+      throw new BadRequestException('Huéspedes inválidos');
     const orders = (
       preloadedOrders ||
       (await em.findBy<any>('orders', { accommodationId: hotel.id, status: 'CONFIRMED' }))
@@ -322,13 +322,13 @@ export class AlojamientosService implements OnModuleInit {
   async search(b: any, user?: any) {
     this.dates(b.checkin, b.checkout);
     if (b.currency && b.currency !== 'USD')
-      throw new BadRequestException('El prototipo opera Ãºnicamente en USD');
+      throw new BadRequestException('El prototipo opera únicamente en USD');
     const hotels = (await this.catalog()).filter(
       (h) => (!b.city || h.cityId === b.city) && (!b.country || b.country === 'ec'),
     );
     const rows = b.rows || 100;
     const offset = b.page ? Number(b.page) : 0;
-    if (!Number.isInteger(offset) || offset < 0) throw new BadRequestException('PÃ¡gina invÃ¡lida');
+    if (!Number.isInteger(offset) || offset < 0) throw new BadRequestException('Página inválida');
     const found = [];
     const orders = await this.database.db.manager.findBy<any>('orders', { status: 'CONFIRMED' });
     const calendar = await this.database.db.manager.find<any>('calendario_tarifas');
@@ -412,9 +412,9 @@ export class AlojamientosService implements OnModuleInit {
         accommodationId: b.accommodation_id,
       });
       if (!p || p.expiresAt < now())
-        throw new ConflictException('La disponibilidad venciÃ³; vuelve a consultar');
+        throw new ConflictException('La disponibilidad venció; vuelve a consultar');
       if (canonical(p.guests) !== canonical(b.guests))
-        throw new ConflictException('Los huÃ©spedes cambiaron; consulta disponibilidad de nuevo');
+        throw new ConflictException('Los huéspedes cambiaron; consulta disponibilidad de nuevo');
       const h = await this.hotel(em, p.accommodationId);
       await this.assertNoOverlap(em, user.id, h.id, p);
       const a = await this.capacity(em, h, p);
@@ -500,16 +500,16 @@ export class AlojamientosService implements OnModuleInit {
           existing.operation !== operation ||
           existing.fingerprint !== fingerprint
         )
-          throw new ConflictException('Clave idempotente reutilizada con otra operaciÃ³n');
+          throw new ConflictException('Clave idempotente reutilizada con otra operación');
         return existing.response;
       }
       let o: any;
       if (action === 'create') {
         const q = await em.findOneBy<any>('quotes', { id: b.order_preview_id, ownerId: user.id });
         if (!q || q.expiresAt < now())
-          throw new ConflictException('CotizaciÃ³n no encontrada o vencida');
+          throw new ConflictException('Cotización no encontrada o vencida');
         if (await em.findOneBy<any>('orders', { quoteId: q.id }))
-          throw new ConflictException('Esta cotizaciÃ³n ya fue confirmada');
+          throw new ConflictException('Esta cotización ya fue confirmada');
         const p = await em.findOneBy<any>('availability_products', { id: q.productId });
         const h = await this.hotel(em, p.accommodationId);
         await this.assertNoOverlap(em, user.id, h.id, p);
@@ -550,8 +550,8 @@ export class AlojamientosService implements OnModuleInit {
         });
       } else {
         o = await this.ownOrder(em, id, user);
-        if (o.status !== 'CONFIRMED') throw new ConflictException('La reserva ya estÃ¡ cancelada');
-        if (o.checkin <= calendarDay()) throw new ConflictException('La estancia ya comenzÃ³');
+        if (o.status !== 'CONFIRMED') throw new ConflictException('La reserva ya está cancelada');
+        if (o.checkin <= calendarDay()) throw new ConflictException('La estancia ya comenzó');
         if (action === 'cancel') o.status = 'CANCELLED';
         else {
           const input = {
@@ -562,7 +562,7 @@ export class AlojamientosService implements OnModuleInit {
           const h = await this.hotel(em, o.accommodationId);
           await this.assertNoOverlap(em, o.ownerId, h.id, input, o.id);
           const a = await this.capacity(em, h, input, o.id);
-          if (!a.available) throw new ConflictException('Sin disponibilidad para la modificaciÃ³n');
+          if (!a.available) throw new ConflictException('Sin disponibilidad para la modificación');
           Object.assign(o, input, { total: a.total });
           await saveInvoice(em, o, h, a.lineas);
         }
@@ -594,7 +594,7 @@ export class AlojamientosService implements OnModuleInit {
   }
   async saveHotel(b: any, user: any, id?: number) {
     if (id !== undefined && (!Number.isSafeInteger(id) || id < 1))
-      throw new BadRequestException('ID invÃ¡lido');
+      throw new BadRequestException('ID inválido');
     const fields = [
       'nombre',
       'destino',
@@ -617,16 +617,16 @@ export class AlojamientosService implements OnModuleInit {
       const v = { ...old, ...b };
       for (const field of ['nombre', 'descripcion', 'direccion', 'tipo'])
         if (typeof v[field] !== 'string' || v[field].trim().length < 3 || v[field].length > 3000)
-          throw new BadRequestException('Campo invÃ¡lido: ' + field);
+          throw new BadRequestException('Campo inválido: ' + field);
       if (
         typeof v.precioPorNoche !== 'number' ||
         v.precioPorNoche <= 0 ||
         v.precioPorNoche > 100000
       )
-        throw new BadRequestException('Precio invÃ¡lido');
+        throw new BadRequestException('Precio inválido');
       for (const f of ['capacidadAdultos', 'capacidadNinos', 'habitaciones'])
         if (!Number.isInteger(v[f]) || v[f] < (f === 'capacidadNinos' ? 0 : 1) || v[f] > 100)
-          throw new BadRequestException('Capacidad invÃ¡lida: ' + f);
+          throw new BadRequestException('Capacidad inválida: ' + f);
       if (typeof v.published !== 'boolean' || typeof v.tienePiscina !== 'boolean')
         throw new BadRequestException('Estado y piscina deben ser booleanos');
       if (id) {
@@ -652,7 +652,7 @@ export class AlojamientosService implements OnModuleInit {
       if (!/^https:\/\//.test(v.image || ''))
         throw new BadRequestException('La foto debe usar HTTPS');
       const city = await em.findOneBy<any>('cities', { id: v.cityId });
-      if (!city) throw new BadRequestException('Ciudad invÃ¡lida');
+      if (!city) throw new BadRequestException('Ciudad inválida');
       const h = await em.save<any, any>('accommodations', {
         ...(id ? { id } : {}),
         nombre: v.nombre,
@@ -670,7 +670,7 @@ export class AlojamientosService implements OnModuleInit {
       const room = await em.save<any, any>('room_types', {
         ...(roomOld || {}),
         accommodationId: h.id,
-        nombre: 'HabitaciÃ³n estÃ¡ndar',
+        nombre: 'Habitación estándar',
         capacidadAdultos: v.capacidadAdultos,
         capacidadNinos: v.capacidadNinos,
         habitaciones: v.habitaciones,
@@ -717,7 +717,7 @@ export class AlojamientosService implements OnModuleInit {
         (await em.countBy('availability_products', { accommodationId: id }))
       )
         throw new ConflictException(
-          'El alojamiento tiene historial; despublÃ­calo para conservar las referencias',
+          'El alojamiento tiene historial; despublícalo para conservar las referencias',
         );
       const room = await em.findOneBy<any>('room_types', { accommodationId: id });
       await em.delete('rate_plans', { roomTypeId: room.id });
