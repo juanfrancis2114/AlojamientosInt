@@ -491,7 +491,8 @@ export default function Dialogs() {
           <p className="eyebrow dark">TU PRÓXIMA HISTORIA TE ESPERA</p>
           <h2 className="modal-title">Reserva confirmada.</h2>
           <div className="notice">
-            Localizador: <strong>{modal.order.locator}</strong>
+            <span>Código de reserva</span>
+            <strong id="reservation-code" className="d-block fs-3">{modal.order.locator}</strong>
             <br />
             {modal.hotel.nombre}
             <br />
@@ -500,7 +501,8 @@ export default function Dialogs() {
             Total: {money(modal.order.total_price)} · Pago simulado
           </div>
           <p className="muted">
-            Tu reserva quedó guardada. Puedes consultarla, modificarla o cancelarla en Mis reservas.
+            Guarda este código para identificar tu reserva. También lo encontrarás en Mis reservas,
+            donde puedes consultar, modificar o cancelar tu estancia.
           </p>
           <button
             id="see-orders"

@@ -80,6 +80,8 @@ async function api(path, body, token, method = body === undefined ? 'GET' : 'POS
   const bookingToken=traveler.access_token;
   const quote = (await api('orders/preview', { accommodation_id: search[0].id, product_id: availability.products[0].id, guests: input.guests }, bookingToken)).data.data;
   const staleQuote=(await api('orders/preview',{accommodation_id:search[0].id,product_id:availability.products[0].id,guests:input.guests},bookingToken)).data.data;
+  const otherTraveler=(await api('auth/register',{name:'Otro viajero de prueba',email:'verificacion-'+randomUUID()+'@prueba.local',password:randomUUID()+'!'})).data;
+  const otherQuote=(await api('orders/preview',{accommodation_id:search[0].id,product_id:availability.products[0].id,guests:input.guests},otherTraveler.access_token)).data.data;
   const key = randomUUID();
   const body = { order_preview_id: quote.order_preview_id, payment_reference: 'DEMO-VERIFICACION-' + key, customer_details: { first_name: 'Verificación', last_name: 'Despliegue', email: traveler.user.email } };
   const order = (await api('orders/create', body, bookingToken, 'POST', { 'Idempotency-Key': key })).data;
@@ -88,6 +90,9 @@ async function api(path, body, token, method = body === undefined ? 'GET' : 'POS
     const invoice=(await api('orders/'+order.order_id+'/invoice',undefined,bookingToken)).data;
     check(invoice.total===order.total_price&&invoice.detalles.length===2,'Factura simulada y detalles persistidos en Supabase');
     check(!(await api('availability',{...input,accommodation:search[0].id},bookingToken)).data.data.available,'Fechas propias bloqueadas inmediatamente en producción');
+    check(!(await api('availability',{...input,accommodation:search[0].id},otherTraveler.access_token)).data.data.available,'Fechas bloqueadas para otro usuario en producción');
+    const otherDuplicate=await fetch(base+'/api/v1/orders/create',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+otherTraveler.access_token,'Idempotency-Key':randomUUID()},body:JSON.stringify({...body,order_preview_id:otherQuote.order_preview_id})});
+    check(otherDuplicate.status===409,'Confirmación de otro usuario rechaza solapamiento en producción');
     const duplicate=await fetch(base+'/api/v1/orders/create',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+bookingToken,'Idempotency-Key':randomUUID()},body:JSON.stringify({...body,order_preview_id:staleQuote.order_preview_id})});check(duplicate.status===409,'Cotización anterior no duplica la reserva en nube');
     const retry = (await api('orders/create', body, bookingToken, 'POST', { 'Idempotency-Key': key })).data;
     check(retry.order_id === order.order_id, 'Idempotencia operativa en producción');

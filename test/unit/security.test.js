@@ -76,6 +76,16 @@ describe('Reglas de negocio', () => {
     expect(() => service.dates('2099-06-02', '2099-06-01')).toThrow();
     expect(() => service.dates('2099-01-01', '2099-06-01')).toThrow('Máximo 90');
   });
+  it('al modificar excluye la reserva propia pero rechaza otra reserva coincidente', async () => {
+    const input = { checkin: '2099-06-02', checkout: '2099-06-05' };
+    const own = { id: 'propia', checkin: '2099-06-02', checkout: '2099-06-05' };
+    const other = { id: 'otra', checkin: '2099-06-04', checkout: '2099-06-06' };
+    const em = { findBy: vi.fn().mockResolvedValue([own]) };
+    await expect(service.assertNoOverlap(em, 1, input, own.id)).resolves.toBeUndefined();
+    em.findBy.mockResolvedValue([own, other]);
+    await expect(service.assertNoOverlap(em, 1, input, own.id)).rejects.toThrow('ya está reservado');
+    expect(em.findBy).toHaveBeenLastCalledWith('orders', { accommodationId: 1, status: 'CONFIRMED' });
+  });
 });
 describe('CORS', () => {
   it('acepta únicamente orígenes exactos y no subdominios parecidos', () => {

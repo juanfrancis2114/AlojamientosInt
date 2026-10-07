@@ -1,4 +1,4 @@
-import { namePattern, nameHelp, validateUserInput } from './userValidation';
+import { namePattern, nameHelp, restrictNameInput } from './userValidation';
 ﻿import { useBooking } from './context';
 import { useResource } from './useResource';
 import { api } from './api';
@@ -34,13 +34,15 @@ export default function Profile() {
                 name="nombre"
                 pattern={namePattern}
                 title={nameHelp}
-                onInput={validateUserInput}
+                onInput={restrictNameInput}
+                aria-describedby="profile-name-help"
                 className="form-control"
                 required
                 minLength="2"
                 maxLength="100"
                 defaultValue={profile.nombre}
               />
+              <small id="profile-name-help" className="muted">{nameHelp}</small>
             </label>
             <label className="wide">
               Correo

@@ -1,0 +1,1695 @@
+# Contrato propio de Kawsay Estancias. Revisar este contrato antes de cambiar el núcleo REST.
+openapi: 3.0.3
+info:
+  title: Kawsay Estancias API — contrato propio
+  version: 1.2.0
+  description: "Contrato propio del dominio de alojamientos de Kawsay Estancias.
+    Es la fuente de esquemas para validación AJV y documentación del núcleo
+    REST. Conserva nombres de operaciones compatibles con la plantilla
+    académica, con modelos y reglas del proyecto: Ecuador, USD, reservas sin
+    solapamientos, código de reserva, JWT revocable, idempotencia y outbox. Las
+    extensiones administrativas se documentan adicionalmente mediante DTO de
+    NestJS. No hay cobros reales ni entrega automática de webhooks."
+  x-origin: Diseñado para Kawsay Estancias; la plantilla se conserva por separado
+    como referencia académica.
+servers:
+  - url: /api/v1
+    description: API del despliegue desde el que se abre el contrato
+  - url: https://booking-prototipo-alojamientos.vercel.app/api/v1
+    description: Producción actual de Kawsay Estancias
+security:
+  - bearer: []
+  - cookie: []
+tags:
+  - name: Alojamientos
+  - name: Reservas
+  - name: Identidad
+  - name: Integración futura
+x-business-rules:
+  occupancy: Una reserva confirmada bloquea el alojamiento completo en [checkin,
+    checkout).
+  cancellation: Cancelar libera las noches. Se permite otra estancia desde la
+    fecha de salida.
+  currency: USD
+  payment: Simulado; referencias DEMO-.
+  authentication: JWT HS256 de una hora con sesión revocable. OAuth2 externo es futuro.
+  outbox: Reserva y evento se guardan en la misma transacción. El worker de
+    entrega es futuro.
+paths:
+  /search:
+    post:
+      operationId: post_search
+      tags:
+        - Alojamientos
+      summary: Buscar estancias disponibles en Ecuador
+      description: Una reserva confirmada bloquea todo el alojamiento para cualquiera
+        durante las noches [checkin, checkout). Las reservas canceladas liberan
+        las noches.
+      security: []
+      parameters:
+        - name: X-Device-Fingerprint
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchAccommodationRequest"
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccommodationList"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /availability:
+    post:
+      operationId: post_availability
+      tags:
+        - Alojamientos
+      summary: Consultar noches libres y precio calculado por el servidor
+      description: Si hay solapamiento, available=false, available_rooms=0 y
+        products=[]. Los productos disponibles vencen a los 15 minutos.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvailabilityRequest"
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailabilityResponse"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /bulk-availability:
+    post:
+      operationId: post_bulk_availability
+      tags:
+        - Alojamientos
+      summary: Consultar disponibilidad de varias estancias
+      description: ""
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkAvailabilityRequest"
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - request_id
+                  - data
+                  - next_page
+                properties:
+                  request_id:
+                    type: string
+                    format: uuid
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Availability"
+                  next_page:
+                    type: string
+                    nullable: true
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /details:
+    post:
+      operationId: post_details
+      tags:
+        - Alojamientos
+      summary: Consultar información de alojamientos
+      description: ""
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccommodationDetailsRequest"
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccommodationList"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /details/changes:
+    post:
+      operationId: post_details_changes
+      tags:
+        - Alojamientos
+      summary: Consultar cambios de catálogo para sincronizar otro sistema
+      description: ""
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DetailsChangesRequest"
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - request_id
+                  - data
+                  - next_page
+                properties:
+                  request_id:
+                    type: string
+                    format: uuid
+                  data:
+                    type: object
+                    properties:
+                      from:
+                        type: string
+                        format: date-time
+                      next:
+                        type: string
+                        format: date-time
+                      total_changes:
+                        type: integer
+                      changes:
+                        type: object
+                        properties:
+                          accommodations:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                  minimum: 1
+                                updated_at:
+                                  type: string
+                                  format: date-time
+                                published:
+                                  type: boolean
+                  next_page:
+                    type: string
+                    nullable: true
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "401":
+          $ref: "#/components/responses/ProblemDetails401"
+        "403":
+          $ref: "#/components/responses/ProblemDetails403"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /constants:
+    post:
+      operationId: post_constants
+      tags:
+        - Alojamientos
+      summary: Consultar catálogos y moneda admitida
+      description: ""
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConstantsRequest"
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - request_id
+                  - data
+                  - next_page
+                properties:
+                  request_id:
+                    type: string
+                    format: uuid
+                  data:
+                    type: object
+                    properties: {}
+                  next_page:
+                    type: string
+                    nullable: true
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /chains:
+    post:
+      operationId: post_chains
+      tags:
+        - Alojamientos
+      summary: Consultar catálogo preliminar de cadenas
+      description: ""
+      security: []
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - request_id
+                  - data
+                  - next_page
+                properties:
+                  request_id:
+                    type: string
+                    format: uuid
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties: {}
+                  next_page:
+                    type: string
+                    nullable: true
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /reviews:
+    post:
+      operationId: post_reviews
+      tags:
+        - Alojamientos
+      summary: Consultar reseñas públicas
+      description: ""
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewsRequest"
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - request_id
+                  - data
+                  - next_page
+                properties:
+                  request_id:
+                    type: string
+                    format: uuid
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties: {}
+                  next_page:
+                    type: string
+                    nullable: true
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /reviews/scores:
+    post:
+      operationId: post_reviews_scores
+      tags:
+        - Alojamientos
+      summary: Consultar puntuaciones de alojamientos
+      description: ""
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewsScoresRequest"
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - request_id
+                  - data
+                  - next_page
+                properties:
+                  request_id:
+                    type: string
+                    format: uuid
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties: {}
+                  next_page:
+                    type: string
+                    nullable: true
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /orders/preview:
+    post:
+      operationId: post_orders_preview
+      tags:
+        - Reservas
+      summary: Cotizar una reserva antes de confirmarla
+      description: Solo viajeros. La cotización pertenece al usuario y vence a los 10
+        minutos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderPreviewRequest"
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteResponse"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "401":
+          $ref: "#/components/responses/ProblemDetails401"
+        "403":
+          $ref: "#/components/responses/ProblemDetails403"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /orders/create:
+    post:
+      operationId: post_orders_create
+      tags:
+        - Reservas
+      summary: Confirmar reserva y obtener su código
+      description: Revalida las noches dentro de la transacción. Guarda reserva,
+        factura, respuesta idempotente y evento ORDER_CONFIRMED. El campo
+        locator es el código de reserva. El pago es simulado.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID v4. Repetir la misma clave y cuerpo devuelve la misma reserva;
+            cambiar el cuerpo produce 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderCreateRequest"
+      responses:
+        "201":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reservation"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "401":
+          $ref: "#/components/responses/ProblemDetails401"
+        "403":
+          $ref: "#/components/responses/ProblemDetails403"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /orders:
+    get:
+      operationId: get_orders
+      tags:
+        - Reservas
+      summary: Consultar Mis reservas
+      description: ""
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReservationList"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "401":
+          $ref: "#/components/responses/ProblemDetails401"
+        "403":
+          $ref: "#/components/responses/ProblemDetails403"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /orders/{orderId}:
+    get:
+      operationId: get_orders__orderId_
+      tags:
+        - Reservas
+      summary: Consultar una reserva propia o con rol administrador
+      description: ""
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reservation"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "401":
+          $ref: "#/components/responses/ProblemDetails401"
+        "403":
+          $ref: "#/components/responses/ProblemDetails403"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /orders/{orderId}/modify:
+    post:
+      operationId: post_orders__orderId__modify
+      tags:
+        - Reservas
+      summary: Modificar fechas sin solaparse con otra reserva
+      description: ""
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID v4. Repetir la misma clave y cuerpo devuelve la misma reserva;
+            cambiar el cuerpo produce 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderModifyRequest"
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reservation"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "401":
+          $ref: "#/components/responses/ProblemDetails401"
+        "403":
+          $ref: "#/components/responses/ProblemDetails403"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /orders/{orderId}/cancel:
+    post:
+      operationId: post_orders__orderId__cancel
+      tags:
+        - Reservas
+      summary: Cancelar y liberar las noches reservadas
+      description: ""
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID v4. Repetir la misma clave y cuerpo devuelve la misma reserva;
+            cambiar el cuerpo produce 409.
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reservation"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "401":
+          $ref: "#/components/responses/ProblemDetails401"
+        "403":
+          $ref: "#/components/responses/ProblemDetails403"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /auth/register:
+    post:
+      operationId: post_auth_register
+      tags:
+        - Identidad
+      summary: Crear una cuenta de viajero
+      description: ""
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /auth/login:
+    post:
+      operationId: post_auth_login
+      tags:
+        - Identidad
+      summary: Iniciar sesión con JWT y cookie HttpOnly
+      description: ""
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "201":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /auth/me:
+    get:
+      operationId: get_auth_me
+      tags:
+        - Identidad
+      summary: Consultar la identidad autenticada
+      description: ""
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "401":
+          $ref: "#/components/responses/ProblemDetails401"
+        "403":
+          $ref: "#/components/responses/ProblemDetails403"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /auth/logout:
+    post:
+      operationId: post_auth_logout
+      tags:
+        - Identidad
+      summary: Cerrar sesión y revocar el token
+      description: ""
+      responses:
+        "201":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "401":
+          $ref: "#/components/responses/ProblemDetails401"
+        "403":
+          $ref: "#/components/responses/ProblemDetails403"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /catalog:
+    get:
+      operationId: get_catalog
+      tags:
+        - Alojamientos
+      summary: Consultar catálogo público
+      description: ""
+      security: []
+      parameters:
+        - name: nombre
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccommodationList"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /catalog/{id}:
+    get:
+      operationId: get_catalog__id_
+      tags:
+        - Alojamientos
+      summary: Consultar un alojamiento publicado
+      description: ""
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - request_id
+                  - data
+                  - next_page
+                properties:
+                  request_id:
+                    type: string
+                    format: uuid
+                  data:
+                    $ref: "#/components/schemas/Accommodation"
+                  next_page:
+                    type: string
+                    nullable: true
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /cities:
+    get:
+      operationId: get_cities
+      tags:
+        - Alojamientos
+      summary: Consultar destinos de Ecuador
+      description: ""
+      security: []
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - request_id
+                  - data
+                  - next_page
+                properties:
+                  request_id:
+                    type: string
+                    format: uuid
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          minimum: 1
+                        name:
+                          type: string
+                        country:
+                          type: string
+                  next_page:
+                    type: string
+                    nullable: true
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /admin/events:
+    get:
+      operationId: get_admin_events
+      tags:
+        - Integración futura
+      summary: Consultar eventos outbox para demostrar integración futura
+      description: "Solo administrador. Consulta técnica: los eventos están
+        persistidos. No existe todavía un worker de entrega automática. El
+        catálogo puede generar otros tipos de eventos."
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventList"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "401":
+          $ref: "#/components/responses/ProblemDetails401"
+        "403":
+          $ref: "#/components/responses/ProblemDetails403"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /webhooks:
+    get:
+      operationId: get_webhooks
+      tags:
+        - Integración futura
+      summary: Consultar suscripciones sin revelar secretos
+      description: ""
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WebhookView"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "401":
+          $ref: "#/components/responses/ProblemDetails401"
+        "403":
+          $ref: "#/components/responses/ProblemDetails403"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+    post:
+      operationId: post_webhooks
+      tags:
+        - Integración futura
+      summary: Registrar un destino para futura entrega de eventos
+      description: Solo administrador. Guarda una suscripción HTTPS y su secreto. Esta
+        versión no envía solicitudes al destino registrado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookSubscription"
+      responses:
+        "201":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookView"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "401":
+          $ref: "#/components/responses/ProblemDetails401"
+        "403":
+          $ref: "#/components/responses/ProblemDetails403"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+  /webhooks/{id}:
+    delete:
+      operationId: delete_webhooks__id_
+      tags:
+        - Integración futura
+      summary: Eliminar una suscripción
+      description: ""
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Operación completada sin cuerpo.
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "401":
+          $ref: "#/components/responses/ProblemDetails401"
+        "403":
+          $ref: "#/components/responses/ProblemDetails403"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    cookie:
+      type: apiKey
+      in: cookie
+      name: booking_session
+  schemas:
+    Booker:
+      type: object
+      required:
+        - country
+        - platform
+      properties:
+        country:
+          type: string
+          pattern: ^[a-z]{2}$
+        platform:
+          type: string
+          enum:
+            - desktop
+            - mobile
+            - android
+            - ios
+            - tablet
+    AccommodationsGuests:
+      type: object
+      required:
+        - number_of_adults
+        - number_of_rooms
+      properties:
+        number_of_adults:
+          type: integer
+          minimum: 1
+          maximum: 100
+        number_of_rooms:
+          type: integer
+          minimum: 1
+        children:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 17
+    SearchAccommodationRequest:
+      type: object
+      required:
+        - booker
+        - checkin
+        - checkout
+        - guests
+      properties:
+        booker:
+          $ref: "#/components/schemas/Booker"
+        checkin:
+          type: string
+          format: date
+        checkout:
+          type: string
+          format: date
+        guests:
+          $ref: "#/components/schemas/AccommodationsGuests"
+        currency:
+          type: string
+          enum:
+            - USD
+          default: USD
+        city:
+          type: integer
+          minimum: 1
+        country:
+          type: string
+          enum:
+            - ec
+        extras:
+          type: array
+          items:
+            type: string
+        rows:
+          type: integer
+          minimum: 10
+          maximum: 100
+          default: 100
+        page:
+          type: string
+    AvailabilityRequest:
+      type: object
+      required:
+        - accommodation
+        - booker
+        - checkin
+        - checkout
+        - guests
+      properties:
+        booker:
+          $ref: "#/components/schemas/Booker"
+        checkin:
+          type: string
+          format: date
+        checkout:
+          type: string
+          format: date
+        guests:
+          $ref: "#/components/schemas/AccommodationsGuests"
+        currency:
+          type: string
+          enum:
+            - USD
+          default: USD
+        accommodation:
+          type: integer
+          minimum: 1
+        extras:
+          type: array
+          items:
+            type: string
+    BulkAvailabilityRequest:
+      type: object
+      required:
+        - accommodations
+        - booker
+        - checkin
+        - checkout
+        - guests
+      properties:
+        booker:
+          $ref: "#/components/schemas/Booker"
+        checkin:
+          type: string
+          format: date
+        checkout:
+          type: string
+          format: date
+        guests:
+          $ref: "#/components/schemas/AccommodationsGuests"
+        currency:
+          type: string
+          enum:
+            - USD
+          default: USD
+        accommodations:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+        filters:
+          type: object
+          properties:
+            meal_plan:
+              type: string
+            cancellation_type:
+              type: string
+        extras:
+          type: array
+          items:
+            type: string
+    AccommodationDetailsRequest:
+      type: object
+      properties:
+        accommodations:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+        city:
+          type: integer
+          minimum: 1
+        country:
+          type: string
+        extras:
+          type: array
+          items:
+            type: string
+        languages:
+          type: array
+          items:
+            type: string
+    DetailsChangesRequest:
+      type: object
+      required:
+        - last_change
+      properties:
+        last_change:
+          type: string
+          format: date-time
+        filters:
+          type: object
+          properties:
+            countries:
+              type: array
+              items:
+                type: string
+            cities:
+              type: array
+              items:
+                type: integer
+                minimum: 1
+    ConstantsRequest:
+      type: object
+      properties:
+        languages:
+          type: array
+          items:
+            type: string
+        constants:
+          type: array
+          items:
+            type: string
+    ReviewsRequest:
+      type: object
+      required:
+        - accommodations
+      properties:
+        accommodations:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+        languages:
+          type: array
+          items:
+            type: string
+        page:
+          type: string
+        rows:
+          type: integer
+    ReviewsScoresRequest:
+      type: object
+      required:
+        - accommodations
+      properties:
+        accommodations:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+        languages:
+          type: array
+          items:
+            type: string
+    OrderPreviewRequest:
+      type: object
+      required:
+        - accommodation_id
+        - product_id
+        - guests
+      properties:
+        accommodation_id:
+          type: integer
+          minimum: 1
+        product_id:
+          type: string
+          format: uuid
+        guests:
+          $ref: "#/components/schemas/AccommodationsGuests"
+    CustomerDetails:
+      type: object
+      required:
+        - first_name
+        - last_name
+        - email
+      properties:
+        first_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        last_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          maxLength: 254
+    OrderCreateRequest:
+      type: object
+      required:
+        - order_preview_id
+        - payment_reference
+        - customer_details
+      properties:
+        order_preview_id:
+          type: string
+          format: uuid
+        payment_reference:
+          type: string
+          pattern: ^DEMO-
+          description: Referencia de pago simulado; el prototipo no cobra dinero.
+        customer_details:
+          $ref: "#/components/schemas/CustomerDetails"
+    OrderModifyRequest:
+      type: object
+      properties:
+        checkin:
+          type: string
+          format: date
+        checkout:
+          type: string
+          format: date
+        guests:
+          $ref: "#/components/schemas/AccommodationsGuests"
+    RegisterRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          pattern: ^[\p{L}\p{M}]+(?:[ '\-][\p{L}\p{M}]+)*$
+          description: "Nombre personal: letras, tildes, espacios, apóstrofes y guiones.
+            Sin números."
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 10
+          maxLength: 128
+          writeOnly: true
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 10
+          maxLength: 128
+          writeOnly: true
+    User:
+      type: object
+      required:
+        - id
+        - name
+        - email
+        - role
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+            - admin
+            - customer
+    AuthResponse:
+      type: object
+      required:
+        - user
+        - access_token
+        - token_type
+        - expires_in
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum:
+            - Bearer
+        expires_in:
+          type: integer
+          example: 3600
+    Accommodation:
+      type: object
+      required:
+        - id
+        - nombre
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        nombre:
+          type: string
+        cityId:
+          type: integer
+          minimum: 1
+        destino:
+          type: string
+        descripcion:
+          type: string
+        direccion:
+          type: string
+        tipo:
+          type: string
+        image:
+          type: string
+          format: uri
+        published:
+          type: boolean
+        precioPorNoche:
+          type: number
+          minimum: 0
+        capacidadAdultos:
+          type: integer
+        capacidadNinos:
+          type: integer
+        habitaciones:
+          type: integer
+        facilities:
+          type: array
+          items:
+            type: string
+    AvailabilityProduct:
+      type: object
+      required:
+        - id
+        - total_price
+        - nights
+        - rooms
+        - expires_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        total_price:
+          type: number
+          minimum: 0
+        price_per_night:
+          type: number
+          minimum: 0
+        nights:
+          type: integer
+        rooms:
+          type: integer
+        cancellation:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        desglose:
+          type: array
+          items:
+            type: object
+            properties: {}
+    Availability:
+      type: object
+      required:
+        - id
+        - available
+        - available_rooms
+        - products
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        available:
+          type: boolean
+        available_rooms:
+          type: integer
+          minimum: 0
+        motivo:
+          type: string
+          nullable: true
+        currency:
+          type: string
+          enum:
+            - USD
+          default: USD
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/AvailabilityProduct"
+        url:
+          type: string
+    Quote:
+      type: object
+      required:
+        - order_preview_id
+        - total_price
+        - expires_at
+        - checkin
+        - checkout
+      properties:
+        order_preview_id:
+          type: string
+          format: uuid
+        total_price:
+          type: number
+          minimum: 0
+        currency:
+          type: string
+          enum:
+            - USD
+          default: USD
+        expires_at:
+          type: string
+          format: date-time
+        checkin:
+          type: string
+          format: date
+        checkout:
+          type: string
+          format: date
+        nights:
+          type: integer
+    Reservation:
+      type: object
+      required:
+        - order_id
+        - locator
+        - status
+        - accommodation_details
+        - checkin
+        - checkout
+        - guests
+        - total_price
+        - currency
+        - creation_date
+      properties:
+        order_id:
+          type: string
+          format: uuid
+        locator:
+          type: string
+          pattern: ^BP-[A-F0-9]{8}$
+          description: Código de reserva visible en la confirmación y Mis reservas.
+          example: BP-41A92454
+        status:
+          type: string
+          enum:
+            - CONFIRMED
+            - CANCELLED
+        accommodation_details:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              minimum: 1
+        checkin:
+          type: string
+          format: date
+        checkout:
+          type: string
+          format: date
+        guests:
+          $ref: "#/components/schemas/AccommodationsGuests"
+        customer_details:
+          $ref: "#/components/schemas/CustomerDetails"
+        total_price:
+          type: number
+          minimum: 0
+        currency:
+          type: string
+          enum:
+            - USD
+          default: USD
+        creation_date:
+          type: string
+          format: date-time
+        estancia_estado:
+          type: string
+          enum:
+            - CONFIRMADA
+            - EN_CURSO
+            - COMPLETADA
+            - CANCELADA
+        puede_resenar:
+          type: boolean
+        _links:
+          type: object
+          properties:
+            self:
+              type: string
+            modify:
+              type: string
+            cancel:
+              type: string
+    Problem:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - detail
+        - instance
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+        instance:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            properties: {}
+    WebhookSubscription:
+      type: object
+      required:
+        - id
+        - url
+        - events
+        - secret
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+          pattern: ^https://
+        events:
+          type: array
+          items:
+            type: string
+            enum:
+              - ORDER_CONFIRMED
+              - ORDER_CANCELLED
+        secret:
+          type: string
+          minLength: 16
+          writeOnly: true
+    WebhookView:
+      type: object
+      required:
+        - id
+        - url
+        - events
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+    OutboxEvent:
+      type: object
+      required:
+        - id
+        - eventType
+        - resourceId
+        - timestamp
+        - data
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          example: ORDER_CONFIRMED
+          description: Eventos de reservas o de inicialización del catálogo.
+        resourceId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        data:
+          type: object
+          properties: {}
+        status:
+          type: string
+          enum:
+            - PENDING
+            - PROCESSED
+    AccommodationList:
+      type: object
+      required:
+        - request_id
+        - data
+        - next_page
+      properties:
+        request_id:
+          type: string
+          format: uuid
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Accommodation"
+        next_page:
+          type: string
+          nullable: true
+    AvailabilityResponse:
+      type: object
+      required:
+        - request_id
+        - data
+        - next_page
+      properties:
+        request_id:
+          type: string
+          format: uuid
+        data:
+          $ref: "#/components/schemas/Availability"
+        next_page:
+          type: string
+          nullable: true
+    QuoteResponse:
+      type: object
+      required:
+        - request_id
+        - data
+        - next_page
+      properties:
+        request_id:
+          type: string
+          format: uuid
+        data:
+          $ref: "#/components/schemas/Quote"
+        next_page:
+          type: string
+          nullable: true
+    ReservationList:
+      type: object
+      required:
+        - request_id
+        - data
+        - next_page
+      properties:
+        request_id:
+          type: string
+          format: uuid
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Reservation"
+        next_page:
+          type: string
+          nullable: true
+    EventList:
+      type: object
+      required:
+        - request_id
+        - data
+        - next_page
+      properties:
+        request_id:
+          type: string
+          format: uuid
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/OutboxEvent"
+        next_page:
+          type: string
+          nullable: true
+  responses:
+    ProblemDetails400:
+      description: Solicitud inválida según el contrato o las reglas del dominio.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    ProblemDetails401:
+      description: Sesión ausente o vencida.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    ProblemDetails403:
+      description: Permisos insuficientes.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    ProblemDetails404:
+      description: Recurso inexistente o no accesible.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    ProblemDetails409:
+      description: Fechas ocupadas, cotización vencida o clave idempotente reutilizada
+        con otro contenido.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    ProblemDetails429:
+      description: Límite de intentos de autenticación alcanzado.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"

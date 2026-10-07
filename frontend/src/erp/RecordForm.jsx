@@ -1,4 +1,4 @@
-import { namePattern, nameHelp, emailHelp, validateUserInput } from '../userValidation';
+import { namePattern, nameHelp, emailHelp, validateUserInput, restrictNameInput } from '../userValidation';
 import { api } from '../api';
 import { AsyncForm, Modal } from '../components';
 import { useBooking } from '../context';
@@ -72,7 +72,8 @@ export default function RecordForm({ resource, record = {}, onClose }) {
         <div className="form-grid">
           {resource === 'usuarios' && (
             <>
-              {field('nombre', 'Nombre', 'text', { minLength: 2, maxLength: 100, pattern: namePattern, title: nameHelp, onInput: validateUserInput })}
+              {field('nombre', 'Nombre', 'text', { minLength: 2, maxLength: 100, pattern: namePattern, title: nameHelp, onInput: restrictNameInput, 'aria-describedby': 'erp-name-help' })}
+              <small id="erp-name-help" className="muted wide">{nameHelp}</small>
               {field('correo', 'Correo', 'email', { maxLength: 254, title: emailHelp, onInput: validateUserInput })}
               {select(
                 'rol',

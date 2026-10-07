@@ -61,7 +61,9 @@ export default function Orders() {
                   {order.checkin} → {order.checkout} · {order.guests.number_of_adults} adulto(s) ·{' '}
                   {order.guests.number_of_rooms} habitación(es)
                   <br />
-                  Localizador: {order.locator} · {money(order.total_price)} · Pago simulado
+                  Código de reserva: <strong>{order.locator}</strong>
+                  <br />
+                  {money(order.total_price)} · Pago simulado
                 </p>
               </div>
               <div>

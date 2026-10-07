@@ -9,7 +9,7 @@ import {
   ArgumentsHost,
 } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { originalContract } from './modules/alojamientos/contract';
+import { apiContract } from './modules/alojamientos/contract';
 import { static as serveStatic } from 'express';
 import { join } from 'path';
 import { allowedOrigins } from './common/origins';
@@ -88,11 +88,11 @@ async function bootstrap() {
   });
   app.use(serveStatic(join(process.cwd(), 'public')));
   const config = new DocumentBuilder()
-    .setTitle('Kawsay Estancias · Alojamientos')
+    .setTitle(apiContract.info.title)
     .setDescription(
-      'RDA 1 + seguridad RDA 3. JWT HS256, 1 hora, issuer/audience verificados y revocación al cerrar sesión. Cookie HttpOnly o Authorization Bearer. Reservas de demostración sin cobros reales; OAuth2 externo es futuro.',
+      apiContract.info.description,
     )
-    .setVersion('1.1.0')
+    .setVersion(apiContract.info.version)
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' })
     .addCookieAuth('booking_session')
     .build();
@@ -103,8 +103,8 @@ async function bootstrap() {
         operation.security = [{ bearer: [] }, { cookie: [] }];
     }
   document.components.schemas = {
-    ...originalContract.components.schemas,
     ...document.components.schemas,
+    ...apiContract.components.schemas,
     AdminAccommodation: {
       type: 'object',
       required: [
@@ -137,20 +137,26 @@ async function bootstrap() {
       },
     },
   };
-  document.components.responses = originalContract.components.responses;
-  for (const [path, value] of Object.entries(originalContract.paths)) {
+  document.components.responses = apiContract.components.responses;
+  document['x-business-rules'] = apiContract['x-business-rules'];
+  document['x-contract-source'] = '/api/contrato.yaml';
+  for (const [path, value] of Object.entries(apiContract.paths)) {
     const operation: any = JSON.parse(JSON.stringify(value));
     for (const op of Object.values(operation) as any[])
       if (op.security?.length) op.security = [{ bearer: [] }, { cookie: [] }];
     document.paths['/api/v1' + path] = operation;
   }
   delete document.paths['/api/v1/{action}'];
+  for (const suffix of ['', '/modify', '/cancel']) delete document.paths['/api/v1/orders/{id}' + suffix];
   document.servers = [{ url: '/' }];
   SwaggerModule.setup('api/docs', app, document, { ui: false });
   app.use('/swagger', serveStatic(join(process.cwd(), 'public/swagger')));
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.get(['/api/docs', '/api/docs/'], (_req: any, res: any) => res.sendFile(join(process.cwd(), 'public/swagger/index.html')));
   expressApp.get('/api/openapi.json', (_req: any, res: any) => res.json(document));
+  expressApp.get('/api/contrato.yaml', (_req: any, res: any) =>
+    res.type('application/yaml').sendFile(join(process.cwd(), 'contracts/kawsay-estancias-openapi.yaml')),
+  );
   expressApp.get('/admin', (_req: any, res: any) =>
     res.sendFile(join(process.cwd(), 'public/index.html')),
   );

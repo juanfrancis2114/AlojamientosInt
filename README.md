@@ -1,6 +1,6 @@
 # Kawsay Estancias · Alojamientos · RDA 1
 
-Marketplace y administración de alojamientos desarrollados sobre [Plantilla-Integracion-Sistemas](https://github.com/semestre5grupal-ops/Plantilla-Integracion-Sistemas). NestJS + TypeScript + TypeORM, contrato OpenAPI original, frontend React por componentes, Bootstrap, JWT y despliegue Vercel + Supabase PostgreSQL.
+Marketplace y administración de alojamientos desarrollados sobre [Plantilla-Integracion-Sistemas](https://github.com/semestre5grupal-ops/Plantilla-Integracion-Sistemas). NestJS + TypeScript + TypeORM, contrato OpenAPI propio de Kawsay Estancias, frontend React por componentes, Bootstrap, JWT y despliegue Vercel + Supabase PostgreSQL. [Contrato propio y demostración](docs/contrato-propio.md); [YAML público](https://booking-prototipo-alojamientos.vercel.app/api/contrato.yaml).
 
 **El despliegue público con base de datos operativa es obligatorio para la evaluación.** Publicado y verificado: [marketplace](https://booking-prototipo-alojamientos.vercel.app), [administración](https://booking-prototipo-alojamientos.vercel.app/admin) y [Swagger](https://booking-prototipo-alojamientos.vercel.app/api/docs). Evidencias y fecha de comprobación en [docs/evidencias.md](docs/evidencias.md).
 

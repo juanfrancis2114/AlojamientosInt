@@ -1,4 +1,4 @@
-import { namePattern, nameHelp, emailHelp, validateUserInput } from './userValidation';
+import { namePattern, nameHelp, emailHelp, validateUserInput, restrictNameInput } from './userValidation';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from './api';
@@ -39,11 +39,13 @@ export default function Login({ embedded = false, after }) {
                 minLength="2"
                 pattern={namePattern}
                 title={nameHelp}
-                onInput={validateUserInput}
+                onInput={restrictNameInput}
+                aria-describedby="name-help"
                 required
                 maxLength="100"
                 autoComplete="name"
               />
+              <small id="name-help" className="muted">{nameHelp}</small>
             </label>
           )}
           <label className="wide">

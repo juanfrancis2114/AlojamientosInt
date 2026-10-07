@@ -2,9 +2,9 @@
 
 ## Contratos
 
-El contrato original permanece en `contracts/alojamientos-openapi.yaml`. La aplicación usa sus esquemas con AJV para validar búsquedas, disponibilidad, detalles, cotizaciones, creación/modificación de reservas y suscripciones. Swagger integra los cuerpos y respuestas del contrato con las operaciones administrativas reales. Se puede descargar el contrato operativo en `/api/openapi.json` y probarlo en `/api/docs`.
+El contrato propio es `contracts/kawsay-estancias-openapi.yaml`, versión 1.2.0, diseñado para las reglas y respuestas reales de Kawsay Estancias. La aplicación carga directamente sus esquemas con AJV para validar registro, inicio de sesión, búsquedas, disponibilidad, detalles, cotizaciones, creación/modificación de reservas y suscripciones. Swagger publica las operaciones del contrato y añade las extensiones administrativas documentadas mediante DTO. El YAML propio se descarga en `/api/contrato.yaml`; el documento operativo completo en `/api/openapi.json`; y las pruebas interactivas están en `/api/docs`.
 
-La base efectiva de la API es `/api/v1`. El contrato original usa servidores ilustrativos de Booking Hub: **esas direcciones no son un despliegue de este proyecto**. La versión operativa declara el servidor relativo del despliegue.
+La base efectiva de la API es `/api/v1`. El contrato propio declara esa base relativa y la URL real de producción. `contracts/alojamientos-openapi.yaml` se conserva como referencia académica de la plantilla; no se carga para validar ni para publicar el núcleo de la API. La adopción inicial usó la plantilla y el contrato propio se formalizó posteriormente. No se afirma que todo el proyecto se haya construido desde cero después de redactarlo. En adelante, los cambios del núcleo deben revisarse primero en el contrato propio y acompañarse de pruebas de conformidad.
 
 | Método y ruta | Consumidor | Función |
 |---|---|---|
@@ -35,7 +35,7 @@ Se añadieron contratos preliminares de lectura en `contracts/alojamientos-integ
 
 ## Decisiones y diferencias documentadas
 
-El contrato propone OAuth2 externo; esta versión implementa JWT HS256 emitido por el backend del proyecto. Verifica firma, emisor `booking-prototipo`, audiencia `booking-web`, expiración y `sub`; obtiene el rol actual de la base. Acepta Authorization Bearer o cookie HttpOnly y comprueba una sesión revocable. Un proveedor OAuth2 y sus scopes siguen siendo integración futura.
+El contrato de referencia de la plantilla propone OAuth2 externo; el contrato propio documenta JWT HS256 emitido por el backend del proyecto. Verifica firma, emisor `booking-prototipo`, audiencia `booking-web`, expiración y `sub`; obtiene el rol actual de la base. Acepta Authorization Bearer o cookie HttpOnly y comprueba una sesión revocable. Un proveedor OAuth2 y sus scopes siguen siendo integración futura.
 
 El prototipo solo acepta `payment_reference` con prefijo `DEMO-`, indicado en la interfaz y documentación. En integración real, esta referencia debe validarse con el servicio de pagos mediante comunicación servidor a servidor; nunca confiar solo en texto enviado por un cliente. `ORDER_CONFIRMED` describe una reserva académica confirmada, no un cobro real.
 

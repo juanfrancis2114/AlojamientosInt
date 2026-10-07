@@ -76,13 +76,11 @@ export class AlojamientosService implements OnModuleInit {
   }
   async assertNoOverlap(
     em: EntityManager,
-    userId: string,
     hotelId: number,
     input: any,
     exclude?: string,
   ) {
     const rows = await em.findBy<any>('orders', {
-      ownerId: userId,
       accommodationId: hotelId,
       status: 'CONFIRMED',
     });
@@ -90,7 +88,7 @@ export class AlojamientosService implements OnModuleInit {
       rows.some((o) => o.id !== exclude && o.checkin < input.checkout && o.checkout > input.checkin)
     )
       throw new ConflictException(
-        'Ya tienes una reserva en este alojamiento que coincide con esas fechas. Modifica o cancela la existente, o elige otras fechas',
+        'Este alojamiento ya está reservado en esas fechas. Elige otras fechas',
       );
   }
   async auth(req: any, admin = false) {
@@ -261,8 +259,10 @@ export class AlojamientosService implements OnModuleInit {
       calendar,
     );
     const duplicate = !!ownerId && orders.some((o) => o.ownerId === ownerId);
+    const occupied = orders.length > 0;
+    if (occupied) rooms = 0;
     const available =
-      !duplicate &&
+      !occupied &&
       hotel.published &&
       rooms >= g.number_of_rooms &&
       hotel.capacidadAdultos * g.number_of_rooms >= g.number_of_adults &&
@@ -275,7 +275,7 @@ export class AlojamientosService implements OnModuleInit {
       lineas: prices.lineas,
       motivo: duplicate
         ? 'Ya tienes una reserva en este alojamiento que coincide con esas fechas. Modifica o cancela la existente, o cambia las fechas.'
-        : null,
+        : occupied ? 'Este alojamiento ya está reservado en esas fechas. Elige otras fechas.' : null,
     };
   }
 
@@ -421,7 +421,7 @@ export class AlojamientosService implements OnModuleInit {
       if (canonical(p.guests) !== canonical(b.guests))
         throw new ConflictException('Los huéspedes cambiaron; consulta disponibilidad de nuevo');
       const h = await this.hotel(em, p.accommodationId);
-      await this.assertNoOverlap(em, user.id, h.id, p);
+      await this.assertNoOverlap(em, h.id, p);
       const a = await this.capacity(em, h, p);
       if (!a.available || a.total !== p.total)
         throw new ConflictException('Disponibilidad o precio cambiaron');
@@ -517,7 +517,7 @@ export class AlojamientosService implements OnModuleInit {
           throw new ConflictException('Esta cotización ya fue confirmada');
         const p = await em.findOneBy<any>('availability_products', { id: q.productId });
         const h = await this.hotel(em, p.accommodationId);
-        await this.assertNoOverlap(em, user.id, h.id, p);
+        await this.assertNoOverlap(em, h.id, p);
         const a = await this.capacity(em, h, p);
         if (!a.available || a.total !== q.total)
           throw new ConflictException('Sin disponibilidad o precio actualizado');
@@ -565,7 +565,7 @@ export class AlojamientosService implements OnModuleInit {
             guests: b.guests || o.guests,
           };
           const h = await this.hotel(em, o.accommodationId);
-          await this.assertNoOverlap(em, o.ownerId, h.id, input, o.id);
+          await this.assertNoOverlap(em, h.id, input, o.id);
           const a = await this.capacity(em, h, input, o.id);
           if (!a.available) throw new ConflictException('Sin disponibilidad para la modificación');
           Object.assign(o, input, { total: a.total });

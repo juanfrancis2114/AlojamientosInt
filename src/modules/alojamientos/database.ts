@@ -1,9 +1,11 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, ConflictException, BadRequestException } from '@nestjs/common';
 import { DataSource, EntitySchema, EntityManager } from 'typeorm';
 import { mkdirSync } from 'fs';
 import { nombresTablas, nombresColumnas } from './nombres-base';
 import { migrationEstancias } from './migration-estancias';
 import { migrationGalerias } from './migration-galerias';
+import { migrationReservas } from './migration-reservas';
+import { migrationNombres } from './migration-nombres';
 
 const id = { type: Number, primary: true, generated: true };
 const uuid = { type: String, primary: true };
@@ -65,6 +67,19 @@ export class Database implements OnModuleInit, OnModuleDestroy {
     if(postgres&&process.env.APPLY_DEMO_UPGRADE==='true')await this.db.transaction(async em=>{await em.query('SELECT pg_advisory_xact_lock(73123321)');const result=await em.query("SELECT to_regclass('public.imagenes_alojamiento') AS name");if(!result[0].name){await em.query(migrationGalerias);console.log('Tabla de galerías aplicada desde la nube');}});
     if (!postgres) await this.db.getRepository('transaction_lock').save({ id: 1, version: 0 });
     else if (!await this.db.getRepository('transaction_lock').findOneBy({ id: 1 })) throw new Error('Falta aplicar la migración inicial y su fila de control');
+    if (postgres) await this.db.transaction(async em => {
+      await em.query('SELECT pg_advisory_xact_lock(73123321)');
+      const triggers = await em.query("SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.reservas'::regclass AND tgname = 'reservas_sin_solapamiento' AND NOT tgisinternal");
+      if (!triggers.length) {
+        await em.query(migrationReservas);
+        console.log('Bloqueo de reservas solapadas instalado en PostgreSQL');
+      }
+      const nameTriggers = await em.query("SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.usuarios'::regclass AND tgname = 'usuarios_nombre_valido' AND NOT tgisinternal");
+      if (!nameTriggers.length) {
+        await em.query(migrationNombres);
+        console.log('Validación de nombres instalada en PostgreSQL');
+      }
+    });
   }
   async transaction<T>(fn: (em: EntityManager) => Promise<T>): Promise<T> {
     let release: () => void;
@@ -74,7 +89,13 @@ export class Database implements OnModuleInit, OnModuleDestroy {
     try { return await this.db.transaction(async em => {
       if (this.db.options.type === 'postgres') await em.query('SELECT id FROM bloqueo_transacciones WHERE id=1 FOR UPDATE');
       return fn(em);
-    }); } finally { release(); }
+    }); } catch (error) {
+      if (error?.driverError?.constraint === 'nombre_usuario_valido')
+        throw new BadRequestException('Nombre de 2 a 100 caracteres: letras, espacios, apóstrofes y guiones; sin números');
+      if (error?.driverError?.code === '23P01')
+        throw new ConflictException('Este alojamiento ya está reservado en esas fechas. Elige otras fechas');
+      throw error;
+    } finally { release(); }
   }
   async onModuleDestroy() { if (this.db?.isInitialized) await this.db.destroy(); }
 }

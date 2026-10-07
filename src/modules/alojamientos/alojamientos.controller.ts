@@ -11,12 +11,23 @@ const wrap = (data: any) => ({ request_id: randomUUID(), data, next_page: null }
 export class AlojamientosController {
   constructor(private readonly service: AlojamientosService) {}
   @Get('health')
-  async health() { await this.service.database.db.query('SELECT 1'); return { status: 'ok', database: this.service.database.db.options.type, domain: 'alojamientos' }; }
+  async health() {
+    await this.service.database.db.query('SELECT 1');
+    const postgres = this.service.database.db.options.type === 'postgres';
+    const guard = postgres ? await this.service.database.db.query("SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.reservas'::regclass AND tgname = 'reservas_sin_solapamiento' AND tgenabled = 'O'") : [];
+    const nameGuard = postgres ? await this.service.database.db.query("SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.usuarios'::regclass AND tgname = 'usuarios_nombre_valido' AND tgenabled = 'O'") : [];
+    return { status: 'ok', database: this.service.database.db.options.type, domain: 'alojamientos', reservation_guard: postgres ? guard.length > 0 : 'application', user_name_guard: postgres ? nameGuard.length > 0 : 'application' };
+  }
   @Post('auth/:action')
   @ApiBody({ schema: { type: 'object', required: ['email', 'password'], properties: { email: { type: 'string', format: 'email' }, password: { type: 'string', minLength: 10 }, name: { type: 'string' } } } })
   async login(@Param('action') action: string, @Body() b: any, @Req() req: any, @Res({ passthrough: true }) res: any) {
     if (action === 'logout') { await this.service.logout(req); res.clearCookie('booking_session', { path: '/' }); return { ok: true }; }
     if (!['login', 'register'].includes(action)) throw new NotFoundException();
+    validateContract(action === 'register' ? 'RegisterRequest' : 'LoginRequest', {
+      ...b,
+      ...(typeof b?.name === 'string' ? { name: b.name.trim() } : {}),
+      ...(typeof b?.email === 'string' ? { email: b.email.trim() } : {}),
+    });
     const result = await this.service.login(b, action === 'register');
     res.cookie('booking_session', result.token, { httpOnly: true, secure: !!process.env.VERCEL || process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/', maxAge: 3600000 });
     return { user: result.user, access_token: result.token, token_type: 'Bearer', expires_in: 3600 };

@@ -34,6 +34,13 @@ async function api(path, body, token, method = body === undefined ? 'GET' : 'POS
   }
   startServer(); await waitReady();
   check((await api('health')).body.status === 'ok', 'Base SQL operativa');
+  const yamlSource = await (await fetch('http://127.0.0.1:' + port + '/api/contrato.yaml')).text();
+  check(yamlSource === fs.readFileSync('contracts/kawsay-estancias-openapi.yaml', 'utf8'), 'Publica exactamente el contrato propio del repositorio');
+  const ownContract = require('yaml').parse(yamlSource);
+  const Ajv = require('ajv'); const addFormats = require('ajv-formats');
+  const responseAjv = new Ajv({ strict: false, allErrors: true }); addFormats(responseAjv);
+  responseAjv.addSchema({ $id: 'own-contract', components: ownContract.components });
+  function conforms(name, body) { const validate = responseAjv.compile({ $ref: 'own-contract#/components/schemas/' + name }); check(validate(body), 'Respuesta real cumple contrato propio: ' + name + (validate.errors ? JSON.stringify(validate.errors) : '')); }
   const catalog = (await api('catalog')).body.data;
   check(catalog.length === 6, 'Catálogo inicial de seis alojamientos');
   check((await api('admin/accommodations')).status === 401, 'Administración exige autenticación');
@@ -89,10 +96,12 @@ async function api(path, body, token, method = body === undefined ? 'GET' : 'POS
   check((await api('catalog?nombre=nombre-inexistente')).body.data.length === 0, 'Lista sin coincidencias responde 200 con arreglo vacío');
   check((await api('admin/accommodations/' + hid, { precioPorNoche: 26.55 }, admin, 'PATCH')).status === 200, 'CRUD editar tarifa');
   const av = (await api('availability', { ...input, accommodation: hid })).body.data;
+  conforms('Availability', av);
   check(av.available && av.products[0].total_price === 53.1, 'Precio calculado en servidor con centavos');
   const previewInput = { accommodation_id: hid, product_id: av.products[0].id, guests: input.guests };
   check((await api('orders/preview',previewInput,admin)).status===403,'Admin no puede cotizar reservas personales');
   const qa = (await api('orders/preview', previewInput, a)).body.data;
+  conforms('Quote', qa);
   const qb = (await api('orders/preview', previewInput, b)).body.data;
   const order = q => ({ order_preview_id: q.order_preview_id, payment_reference: 'DEMO-TEST', customer_details: { first_name: 'Cliente', last_name: 'Prueba', email: 'uno@test.local' } });
   check((await api('orders/create',order(qa),admin,'POST',{'Idempotency-Key':randomUUID()})).status===403,'Admin no puede crear reservas personales');
@@ -102,6 +111,7 @@ async function api(path, body, token, method = body === undefined ? 'GET' : 'POS
   check(results.filter(r => r.status === 201).length === 1 && results.filter(r => r.status === 409).length === 1, 'Dos reservas concurrentes no sobrevendan una habitación');
   const winner = results[0].status === 201 ? { r: results[0], token: a, other: b, q: qa, key: keyA } : { r: results[1], token: b, other: a, q: qb, key: keyB };
   const oid = winner.r.body.order_id;
+  conforms('Reservation', winner.r.body);
   const replay = await api('orders/create', order(winner.q), winner.token, 'POST', { 'Idempotency-Key': winner.key });
   check(replay.body.order_id === oid, 'Reintento idempotente devuelve la misma reserva');
   check((await api('orders/create', { ...order(winner.q), payment_reference: 'DEMO-DIFFERENT' }, winner.token, 'POST', { 'Idempotency-Key': winner.key })).status === 409, 'Detecta reutilización de clave con distinto contenido');
@@ -192,15 +202,24 @@ async function api(path, body, token, method = body === undefined ? 'GET' : 'POS
   check(priced.available&&priced.products[0].desglose[0].precio_unitario===40.15,'Disponibilidad aplica tarifa especial por noche');
   const quote=(await api('orders/preview',{accommodation_id:1,product_id:priced.products[0].id,guests:input.guests},a)).body.data;
   const staleQuote=(await api('orders/preview',{accommodation_id:1,product_id:priced.products[0].id,guests:input.guests},a)).body.data;
+  const otherQuote=(await api('orders/preview',{accommodation_id:1,product_id:priced.products[0].id,guests:input.guests},b)).body.data;
   const fresh=(await api('orders/create',order(quote),a,'POST',{'Idempotency-Key':randomUUID()})).body;
   check(!!fresh.order_id,'Reserva con calendario confirmada');
   check((await api('orders/create',order(staleQuote),a,'POST',{'Idempotency-Key':randomUUID()})).status===409,'Una cotización anterior no permite duplicar fechas propias');
   await api('admin/erp/tarifas',{...calendar,cupo:3},admin);
   const ownAvailability=(await api('availability',{...input,accommodation:1},a)).body.data;
   check(!ownAvailability.available&&ownAvailability.motivo.includes('Ya tienes una reserva'),'Disponibilidad se actualiza y bloquea reserva propia coincidente');
-  check((await api('availability',{...input,accommodation:1},b)).body.data.available,'Otro viajero puede reservar las habitaciones restantes');
+  const otherAvailability=(await api('availability',{...input,accommodation:1},b)).body.data;
+  check(!otherAvailability.available&&otherAvailability.available_rooms===0&&otherAvailability.products.length===0,'Reserva bloquea las fechas para otro viajero aunque exista cupo adicional');
+  check(!(await api('availability',{...input,accommodation:1})).body.data.available,'Reserva bloquea disponibilidad sin iniciar sesión');
+  check((await api('orders/create',order(otherQuote),b,'POST',{'Idempotency-Key':randomUUID()})).status===409,'Cotización previa de otro viajero no permite reservar fechas ocupadas');
+  check((await api('orders/preview',{accommodation_id:1,product_id:priced.products[0].id,guests:input.guests},b)).status===409,'No cotiza un producto anterior con fechas ya ocupadas');
   const partial={...input,checkin:new Date(Date.parse(input.checkin)+86400000).toISOString().slice(0,10)};
   check(!(await api('availability',{...partial,accommodation:1},a)).body.data.available,'También bloquea solapamiento parcial de fechas propias');
+  check(!(await api('availability',{...partial,accommodation:1},b)).body.data.available,'Solapamiento parcial queda bloqueado para otro viajero');
+  const adjacent={...input,checkin:input.checkout,checkout:new Date(Date.parse(input.checkout)+86400000).toISOString().slice(0,10)};
+  check((await api('availability',{...adjacent,accommodation:1},b)).body.data.available,'La noche de salida queda libre para una estancia siguiente');
+  check(!(await api('search',input,b,'POST',{'X-Device-Fingerprint':'test'})).body.data.some(h=>h.id===1),'Búsqueda de otro viajero excluye el alojamiento reservado');
   check(!(await api('search',input,a,'POST',{'X-Device-Fingerprint':'test'})).body.data.some(h=>h.id===1),'Búsqueda actualizada excluye la estancia ya reservada por el viajero');
   const invoice=(await api('orders/'+fresh.order_id+'/invoice',undefined,a)).body;
   check(invoice.total===priced.products[0].total_price&&invoice.detalles.length===2&&invoice.cliente.documento==='DEMO123','Factura conserva total, noches e identidad del perfil');

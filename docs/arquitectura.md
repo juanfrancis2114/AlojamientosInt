@@ -1,6 +1,6 @@
 # Arquitectura y modelo de datos
 
-Kawsay Estancias implementa el dominio de **alojamientos** del repositorio `semestre5grupal-ops/Plantilla-Integracion-Sistemas`. Conserva NestJS, TypeScript, TypeORM y el contrato OpenAPI de referencia. Los otros dominios permanecen como plantilla y no se compilan ni se exponen.
+Kawsay Estancias implementa el dominio de **alojamientos** del repositorio `semestre5grupal-ops/Plantilla-Integracion-Sistemas`. Conserva NestJS, TypeScript y TypeORM. El núcleo REST utiliza el contrato propio `contracts/kawsay-estancias-openapi.yaml`, publicado y utilizado para validar solicitudes con AJV; el contrato de la plantilla se conserva como referencia. Los otros dominios permanecen como plantilla y no se compilan ni se exponen.
 
 ```mermaid
 flowchart LR
@@ -76,11 +76,11 @@ La migración inicial es `supabase/migrations/001_booking.sql`. Usa claves forá
 
 ## Disponibilidad y consistencia
 
-Cada habitación representa inventario compartido del alojamiento. El cupo se calcula por la ocupación máxima de cada noche en el intervalo `[fecha_entrada, fecha_salida)`. Las reservas canceladas no consumen cupo. Se comprueba también capacidad de adultos y niños por número de habitaciones solicitado. El precio se calcula en servidor: tarifa × noches × habitaciones. El prototipo trabaja en USD y no agrega impuestos ficticios ni efectúa conversiones.
+Cada reserva confirmada bloquea el alojamiento completo para todos los usuarios durante las noches del intervalo `[fecha_entrada, fecha_salida)`, aunque exista inventario adicional de habitaciones. Se rechazan coincidencias totales y parciales en búsqueda, disponibilidad, cotización, confirmación y modificación. Al modificar se excluye únicamente la propia reserva. Las reservas canceladas liberan las noches y la fecha de salida permite comenzar otra estancia. Se comprueba también capacidad de adultos y niños por número de habitaciones solicitado. El precio se calcula en servidor: tarifa × noches × habitaciones. El prototipo trabaja en USD y no agrega impuestos ficticios ni efectúa conversiones.
 
 Consultar disponibilidad genera un producto válido 15 minutos; previsualizar genera una cotización válida 10 minutos. Al confirmar, se vuelve a verificar cupo, precio, propietario y vencimiento. La reserva, respuesta idempotente y evento outbox se guardan en una única transacción. En PostgreSQL se bloquea `bloqueo_transacciones` con `SELECT FOR UPDATE`, lo que impide sobreventa entre instancias de Vercel. El bloqueo global simplifica la defensa y sacrifica concurrencia; en una evolución se reemplazaría por bloqueos por propiedad/fecha.
 
-En desarrollo se usa SQL.js con archivo persistente `data/booking.sqlite`, para ejecutar sin Docker. Es un adaptador local, **no la base de datos de producción**. En Vercel DATABASE_URL es obligatoria y se prohíbe arrancar con almacenamiento local. La migración de producción se aplica explícitamente; `synchronize` está desactivado en PostgreSQL.
+En desarrollo se usa SQL.js con archivo persistente `data/booking.sqlite`, para ejecutar sin Docker. Es un adaptador local, **no la base de datos de producción**. En Vercel DATABASE_URL es obligatoria y se prohíbe arrancar con almacenamiento local. La migración de producción se aplica explícitamente; `synchronize` está desactivado en PostgreSQL. La migración 006 instala un trigger que rechaza reservas confirmadas solapadas con código PostgreSQL `23P01`, traducido a HTTP 409. El servidor instala esta protección si falta al iniciar, bajo un bloqueo de migración. La protección conserva los registros existentes y evita nuevos solapamientos incluso desde versiones anteriores del servidor. El endpoint de salud informa si el trigger está activo.
 
 ## Límites del prototipo
 
