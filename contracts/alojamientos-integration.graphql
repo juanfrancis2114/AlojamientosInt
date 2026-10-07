@@ -1,0 +1,19 @@
+"""Contrato preliminar de lectura: sin servidor GraphQL desplegado en RDA 1."""
+type Query {
+  alojamientos(nombre: String, ciudadId: Int, precioMaximo: Float): [Alojamiento!]!
+  alojamiento(id: Int!): Alojamiento
+}
+
+type Alojamiento {
+  id: Int!
+  nombre: String!
+  destino: String!
+  descripcion: String!
+  precioPorNoche: Float!
+  moneda: String!
+  capacidadAdultos: Int!
+  capacidadNinos: Int!
+  habitaciones: Int!
+  tienePiscina: Boolean!
+  servicios: [String!]!
+}

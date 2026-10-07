@@ -1,0 +1,88 @@
+/* Bootstrap proporciona formularios, tablas, alertas y utilidades; la identidad visual se personaliza. */
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.search-bar > fieldset {
+  display: contents;
+}
+.search-bar > p {
+  flex-basis: 100%;
+}
+.form-grid input[type='checkbox'],
+input.form-check-input[type='checkbox'] {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  padding: 0;
+  margin: 0 0.5em 0 0;
+  vertical-align: middle;
+}
+.login-panel {
+  max-width: 600px;
+}
+h1,
+h2,
+h3,
+p {
+  overflow-wrap: anywhere;
+}
+.table > :not(caption) > * > * {
+  color: var(--ink);
+}
+.table-hover > tbody > tr:hover > * {
+  --bs-table-accent-bg: #eff4e8;
+}
+.form-actions {
+  margin-bottom: 0;
+}
+.alert {
+  font-size: 14px;
+}
+.button {
+  line-height: 1.4;
+}
+.nav-link {
+  display: inline-block;
+}
+.search-bar input,
+.search-bar select {
+  line-height: normal;
+}
+.form-grid textarea {
+  min-height: 100px;
+}
+.hotel-card .card-body {
+  flex: none;
+}
+dialog h3 {
+  font-size: 20px;
+}
+dialog p {
+  line-height: 1.6;
+}
+a:hover {
+  color: var(--green);
+}
+.form-select {
+  background-position: right 0.5rem center;
+}
+.table td .form-actions {
+  margin: 0;
+}
+.card-location span {
+  overflow-wrap: normal;
+}
+.header nav {
+  flex-wrap: wrap;
+}
+.erp-shell{display:grid;grid-template-columns:245px minmax(0,1fr);background:#f3f5ef;min-height:calc(100vh - 90px)}
+.erp-sidebar{background:#214d42;color:#f8f9ec;padding:32px 22px;align-self:stretch}.erp-sidebar h1{font-family:Georgia,serif;font-size:29px;line-height:1.2;margin:18px 0}.erp-sidebar-note{font-size:13px;color:#c0d1c5}.erp-sidebar nav{display:grid;gap:6px;margin:30px 0}.erp-sidebar nav button{text-align:left;border:0;background:transparent;color:#e5eee6;padding:12px;border-radius:8px;font-size:14px}.erp-sidebar nav button span{display:inline-block;width:28px}.erp-sidebar nav button.active,.erp-sidebar nav button:hover{background:#dbe9b8;color:#214d42}.erp-sidebar small{color:#b7cabb;font-size:11px}.erp-content{padding:34px;min-width:0}.erp-section-heading{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:26px}.erp-section-heading h2{font-family:Georgia,serif;font-size:32px;margin:0 0 10px}.erp-period{display:flex;align-items:end;gap:10px}.erp-period label{font-size:12px}.erp-period input{font-size:13px}.erp-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.erp-kpi,.erp-panel{background:#fff;border:1px solid #e1e7da;border-radius:12px;padding:24px}.erp-kpi span{font-size:12px;color:#5e7065;display:block}.erp-kpi strong{display:block;font-size:31px;margin:15px 0 8px;color:#214d42;line-height:1.15}.erp-kpi small{color:#758477;font-size:11px}.erp-mini-stats{display:flex;gap:25px;flex-wrap:wrap;font-size:13px;padding:22px 2px;color:#637464}.erp-mini-stats strong{color:#214d42}.erp-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:20px;margin-bottom:20px}.erp-panel h3{font-size:19px;margin-bottom:12px}.erp-panel p.muted{font-size:12px}.erp-chart{height:270px;min-width:0}.erp-empty-chart{display:grid;place-items:center;text-align:center;min-height:220px;color:#738374;font-size:14px;padding:30px;background:#f8faf5;border-radius:8px}.erp-category-list>div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;font-size:12px;border-top:1px solid #eef1e8}.erp-map{height:390px;border-radius:8px;z-index:0}.erp-city-rank{display:flex;align-items:center;gap:12px;margin:20px 0}.erp-city-rank>span{display:grid;place-items:center;min-width:30px;height:30px;border-radius:50%;background:#edf2e3;font-size:12px}.erp-city-rank>div{flex:1;min-width:0}.erp-city-rank strong{font-size:14px}.erp-city-rank small{display:block;font-size:11px;color:#778577;margin:5px 0}.erp-city-rank b{font-size:12px}.erp-city-rank progress{width:100%;height:6px;accent-color:#7a986c}.erp-note{font-size:12px;color:#7b8479;padding:16px;border-top:1px solid #dbe3d4}.erp-table-tools{display:flex;align-items:center;gap:20px;margin:24px 0 16px}.erp-table-tools input{max-width:420px}.erp-table-tools span{font-size:12px;white-space:nowrap}.erp-pagination{display:flex;justify-content:flex-end;align-items:center;gap:16px;margin:20px 0;font-size:12px}.erp-badge{display:inline-block;padding:5px 10px;border-radius:20px;font-size:11px;white-space:nowrap;background:#edf1e4;color:#506647}.erp-badge.good{background:#e0eddb;color:#306236}.erp-badge.bad{background:#f7e2d9;color:#a35542}.erp-badge.neutral{background:#f1ecd8;color:#807242}.erp-actions{white-space:nowrap}.erp-actions button{border:0;background:transparent;color:#214d42;font-size:12px;margin-right:8px;padding:5px}.erp-content .table-wrap{background:white}.erp-content .table td{font-size:12px;vertical-align:middle}.erp-content .table th{font-size:10px;letter-spacing:.04em}.erp-content .thumb{width:35px;height:35px;border-radius:6px;object-fit:cover}.brand{white-space:nowrap}.catalog-quick-filter{max-width:330px}.catalog-demo-note{font-size:12px;color:#718071;margin-bottom:20px}
+@media(max-width:1200px){.erp-kpis{grid-template-columns:repeat(2,1fr)}.erp-section-heading{align-items:flex-start;flex-direction:column}.erp-content{padding:25px}.erp-grid{grid-template-columns:1fr}}
+@media(max-width:760px){.erp-shell{grid-template-columns:1fr}.erp-sidebar{padding:20px}.erp-sidebar h1{font-size:24px;margin:10px 0}.erp-sidebar nav{display:flex;overflow:auto;gap:6px;margin:16px 0}.erp-sidebar nav button{white-space:nowrap;padding:10px}.erp-sidebar nav button span{width:22px}.erp-sidebar small,.erp-sidebar-note{display:none}.erp-content{padding:20px 12px}.erp-kpis{gap:10px}.erp-kpi{padding:15px}.erp-kpi strong{font-size:24px}.erp-period{flex-wrap:wrap}.erp-panel{padding:18px}.erp-section-heading h2{font-size:27px}.erp-mini-stats{gap:14px}.erp-table-tools{gap:10px}.erp-map{height:320px}.erp-pagination{justify-content:center}.header .brand{font-size:19px}.header .brand-dot{font-size:9px}.header .brand-icon{width:30px;height:30px;font-size:21px}}
+.erp-sidebar,.erp-panel,.erp-kpi{min-width:0}.erp-sidebar nav{max-width:100%}.erp-content .table-wrap{max-width:100%;overflow-x:auto}
+@media(max-width:760px){.erp-shell{grid-template-columns:minmax(0,1fr)}.erp-period label{max-width:140px}.erp-kpi strong{overflow-wrap:anywhere}}
+@media print{body *{visibility:hidden}#modal,#modal *{visibility:visible}#modal{position:absolute;inset:0;width:100%;max-width:none;max-height:none;overflow:visible;border:0;padding:20px;background:white}#close-modal,.invoice-actions{display:none!important}.invoice-sheet .table-wrap{overflow:visible}}
+.invoice-sheet h3{margin-top:20px}.invoice-sheet td{font-size:12px}.invoice-sheet .notice{font-size:12px}

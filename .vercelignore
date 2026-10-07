@@ -1,0 +1,8 @@
+artifacts/
+data/
+test-results/
+playwright-report/
+.env
+.env.*
+test/
+resources/

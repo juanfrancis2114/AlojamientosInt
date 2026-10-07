@@ -1,217 +1,158 @@
-import {
-  Controller, Get, Post, Delete, Body, Param, Headers,
-  ParseUUIDPipe, UseGuards, HttpCode, HttpStatus, Header,
-} from '@nestjs/common';
-import {
-  ApiTags, ApiOperation, ApiResponse, ApiParam,
-  ApiHeader, ApiSecurity,
-} from '@nestjs/swagger';
+import { Body, Controller, Get, Post, Put, Patch, Delete, Param, Query, Req, Res, Headers, HttpCode, ParseIntPipe, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBody, ApiCookieAuth, ApiCreatedResponse, ApiNoContentResponse, ApiOkResponse, ApiBadRequestResponse, ApiNotFoundResponse } from '@nestjs/swagger';
+import { randomUUID } from 'crypto';
 import { AlojamientosService } from './alojamientos.service';
-import { IdempotencyKeyGuard } from '../../common/guards/idempotency-key.guard';
+import { validateContract } from './contract';
+import { AdminAccommodationDto, PatchAccommodationDto, AccommodationFilterDto } from './dto/admin-accommodation.dto';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Controlador BFF de Alojamientos — Alineado 1:1 con alojamientos-openapi.yaml
-// ─────────────────────────────────────────────────────────────────────────────
-
+const wrap = (data: any) => ({ request_id: randomUUID(), data, next_page: null });
 @Controller()
+@ApiTags('Alojamientos')
 export class AlojamientosController {
-  constructor(private readonly alojamientosService: AlojamientosService) {}
-
-  // ══════════════════════════════════════════════════════════════════════════
-  //  Búsqueda y Catálogo
-  // ══════════════════════════════════════════════════════════════════════════
-
-  @Post('search')
-  @ApiTags('Búsqueda y Catálogo')
-  @ApiOperation({ summary: 'Búsqueda de alojamientos' })
-  @ApiHeader({ name: 'X-Device-Fingerprint', required: true })
-  @ApiResponse({ status: 200, description: 'Alojamientos encontrados' })
-  @ApiResponse({ status: 400, description: 'Petición inválida' })
-  @ApiResponse({ status: 429, description: 'Demasiadas peticiones' })
-  @Header('Cache-Control', 'public, max-age=300')
-  search(
-    @Headers('X-Device-Fingerprint') deviceFingerprint: string,
-    @Body() searchRequest: any,
-  ) {
-    return this.alojamientosService.search(searchRequest);
+  constructor(private readonly service: AlojamientosService) {}
+  @Get('health')
+  async health() { await this.service.database.db.query('SELECT 1'); return { status: 'ok', database: this.service.database.db.options.type, domain: 'alojamientos' }; }
+  @Post('auth/:action')
+  @ApiBody({ schema: { type: 'object', required: ['email', 'password'], properties: { email: { type: 'string', format: 'email' }, password: { type: 'string', minLength: 10 }, name: { type: 'string' } } } })
+  async login(@Param('action') action: string, @Body() b: any, @Req() req: any, @Res({ passthrough: true }) res: any) {
+    if (action === 'logout') { await this.service.logout(req); res.clearCookie('booking_session', { path: '/' }); return { ok: true }; }
+    if (!['login', 'register'].includes(action)) throw new NotFoundException();
+    const result = await this.service.login(b, action === 'register');
+    res.cookie('booking_session', result.token, { httpOnly: true, secure: !!process.env.VERCEL || process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/', maxAge: 3600000 });
+    return { user: result.user, access_token: result.token, token_type: 'Bearer', expires_in: 3600 };
   }
-
-  @Post('availability')
-  @ApiTags('Disponibilidad y Precios')
-  @ApiOperation({ summary: 'Consultar disponibilidad y precio de un alojamiento' })
-  @ApiResponse({ status: 200, description: 'Disponibilidad y detalles del precio' })
-  @ApiResponse({ status: 400, description: 'Petición inválida' })
-  availability(@Body() availabilityRequest: any) {
-    return this.alojamientosService.checkAvailability(availabilityRequest);
+  @Get('auth/me')
+  @ApiCookieAuth()
+  async me(@Req() req: any) { return this.service.auth(req); }
+  @Get('catalog')
+  async catalog(@Query() query: AccommodationFilterDto) { return wrap(await this.service.catalog(false, query.nombre)); }
+  @Get('catalog/:id')
+  @ApiOperation({ summary: 'Consultar un alojamiento publicado por identificador' })
+  @ApiNotFoundResponse({ description: 'Alojamiento inexistente o despublicado' })
+  async catalogHotel(@Param('id', ParseIntPipe) id: number) {
+    const h = await this.service.hotel(this.service.database.db.manager, id);
+    if (!h.published) throw new NotFoundException('Alojamiento no publicado');
+    return wrap(h);
   }
-
-  @Post('bulk-availability')
-  @ApiTags('Disponibilidad y Precios')
-  @ApiOperation({ summary: 'Consultar disponibilidad múltiple de alojamientos' })
-  @ApiResponse({ status: 200, description: 'Disponibilidad para múltiples alojamientos' })
-  bulkAvailability(@Body() bulkRequest: any) {
-    return this.alojamientosService.checkBulkAvailability(bulkRequest);
+  @Get('cities')
+  async cities() { return wrap(await this.service.database.db.manager.find<any>('cities')); }
+  @Get('admin/accommodations')
+  @ApiCookieAuth()
+  @ApiOperation({ summary: 'Listar alojamientos administrativos con filtro por nombre' })
+  async adminHotels(@Req() req: any, @Query() query: AccommodationFilterDto) { await this.service.auth(req, true); return wrap(await this.service.catalog(true, query.nombre)); }
+  @Get('admin/accommodations/:id')
+  @ApiCookieAuth()
+  @ApiOperation({ summary: 'Consultar un alojamiento administrativo por ID' })
+  @ApiOkResponse({ description: 'Detalle y enlaces de acciones administrativas' })
+  @ApiBadRequestResponse({ description: 'ID inválido' })
+  @ApiNotFoundResponse({ description: 'Alojamiento no encontrado' })
+  async adminHotel(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    await this.service.auth(req, true);
+    const h = await this.service.hotel(this.service.database.db.manager, id);
+    const url = '/api/v1/admin/accommodations/' + h.id;
+    return { ...h, _links: { self: { href: url, method: 'GET' }, replace: { href: url, method: 'PUT' }, update: { href: url, method: 'PATCH' }, delete: { href: url, method: 'DELETE' } } };
   }
-
-  @Post('details')
-  @ApiTags('Búsqueda y Catálogo')
-  @ApiOperation({ summary: 'Obtener detalles extendidos de los alojamientos' })
-  @ApiResponse({ status: 200, description: 'Detalles de los alojamientos solicitados' })
-  @Header('Cache-Control', 'public, max-age=300')
-  getDetails(@Body() detailsRequest: any) {
-    return this.alojamientosService.getDetails(detailsRequest);
+  @Post('admin/accommodations')
+  @ApiCookieAuth()
+  @ApiOperation({ summary: 'Crear alojamiento con validación DTO y cabecera Location' })
+  @ApiCreatedResponse({ description: 'Alojamiento creado', headers: { Location: { description: 'URI del recurso creado', schema: { type: 'string' } } } })
+  @ApiBadRequestResponse({ description: 'Cuerpo inválido' })
+  async create(@Body() b: AdminAccommodationDto, @Req() req: any, @Res({ passthrough: true }) res: any) {
+    const h = await this.service.saveHotel(b, await this.service.auth(req, true));
+    res.setHeader('Location', '/api/v1/admin/accommodations/' + h.id);
+    return h;
   }
-
-  @Post('details/changes')
-  @ApiTags('Búsqueda y Catálogo')
-  @ApiSecurity('OAuth2Security', ['alojamientos:read'])
-  @ApiOperation({ summary: 'Obtener alojamientos que han cambiado desde una fecha' })
-  @ApiResponse({ status: 200, description: 'Lista de alojamientos modificados' })
-  getDetailsChanges(@Body() changesRequest: any) {
-    return this.alojamientosService.getDetailsChanges(changesRequest);
+  @Put('admin/accommodations/:id')
+  @ApiCookieAuth()
+  @ApiOperation({ summary: 'Reemplazar los datos editables del alojamiento; todos los campos son obligatorios' })
+  @ApiNoContentResponse({ description: 'Reemplazo completado sin cuerpo' })
+  @ApiBadRequestResponse({ description: 'Faltan campos requeridos o ID inválido' })
+  @ApiNotFoundResponse({ description: 'Alojamiento no encontrado; PUT no crea recursos' })
+  @HttpCode(204)
+  async replace(@Param('id', ParseIntPipe) id: number, @Body() b: AdminAccommodationDto, @Req() req: any) {
+    await this.service.saveHotel(b, await this.service.auth(req, true), id);
   }
-
-  @Post('chains')
-  @ApiTags('Búsqueda y Catálogo')
-  @ApiOperation({ summary: 'Listar cadenas hoteleras y sus marcas' })
-  @ApiResponse({ status: 200, description: 'Lista de cadenas hoteleras' })
-  @Header('Cache-Control', 'public, max-age=3600')
-  getChains() {
-    return this.alojamientosService.getChains();
+  @Patch('admin/accommodations/:id')
+  @ApiCookieAuth()
+  @ApiOperation({ summary: 'Actualizar únicamente los campos enviados, conservando el resto' })
+  @ApiOkResponse({ description: 'Alojamiento actualizado' })
+  async update(@Param('id', ParseIntPipe) id: number, @Body() b: PatchAccommodationDto, @Req() req: any) { return this.service.saveHotel(b, await this.service.auth(req, true), id); }
+  @Delete('admin/accommodations/:id')
+  @ApiCookieAuth()
+  @ApiOperation({ summary: 'Eliminar alojamiento sin historial; 409 si debe conservarse' })
+  @ApiNoContentResponse({ description: 'Eliminado sin cuerpo' })
+  @HttpCode(204)
+  async delete(@Param('id', ParseIntPipe) id: number, @Req() req: any) { await this.service.deleteHotel(id, await this.service.auth(req, true)); }
+  @Get('admin/:resource')
+  async adminData(@Param('resource') resource: string, @Req() req: any) {
+    await this.service.auth(req, true);
+    const table = { events: 'outbox_events', audit: 'audit_logs', orders: 'orders' }[resource];
+    if (!table) throw new NotFoundException();
+    const data = await this.service.database.db.manager.find<any>(table);
+    return wrap(resource === 'orders' ? data.map(o => this.service.orderView(o)) : data);
   }
-
-  @Post('constants')
-  @ApiTags('Componentes Comunes')
-  @ApiOperation({ summary: 'Consultar constantes del sistema (facilidades, tipos de cuartos, etc.)' })
-  @ApiResponse({ status: 200, description: 'Constantes del sistema' })
-  @Header('Cache-Control', 'public, max-age=86400')
-  getConstants(@Body() constantsRequest: any) {
-    return this.alojamientosService.getConstants(constantsRequest);
-  }
-
-  @Post('reviews')
-  @ApiTags('Búsqueda y Catálogo')
-  @ApiOperation({ summary: 'Obtener reseñas de alojamientos' })
-  @ApiResponse({ status: 200, description: 'Reseñas de los alojamientos' })
-  @Header('Cache-Control', 'public, max-age=600')
-  getReviews(@Body() reviewsRequest: any) {
-    return this.alojamientosService.getReviews(reviewsRequest);
-  }
-
-  @Post('reviews/scores')
-  @ApiTags('Búsqueda y Catálogo')
-  @ApiOperation({ summary: 'Obtener puntuaciones de reseñas' })
-  @ApiResponse({ status: 200, description: 'Puntuaciones desglosadas' })
-  @Header('Cache-Control', 'public, max-age=600')
-  getReviewsScores(@Body() scoresRequest: any) {
-    return this.alojamientosService.getReviewsScores(scoresRequest);
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  //  Gestión de Órdenes (Reservas)
-  // ══════════════════════════════════════════════════════════════════════════
-
+  @Get('orders')
+  async orders(@Req() req: any) { const user = await this.service.auth(req); if(user.role==='admin')throw new ForbiddenException('El administrador consulta las reservas desde el panel de gestión'); return wrap((await this.service.database.db.manager.findBy<any>('orders', { ownerId: user.id })).map(o => this.service.orderView(o))); }
+  @Get('orders/:id')
+  async order(@Param('id') id: string, @Req() req: any) { return this.service.orderView(await this.service.ownOrder(this.service.database.db.manager, id, await this.service.auth(req))); }
   @Post('orders/preview')
-  @ApiTags('Gestión de Órdenes (Reservas)')
-  @ApiSecurity('OAuth2Security', ['alojamientos:read'])
-  @ApiOperation({ summary: 'Previsualizar orden antes de confirmar' })
-  @ApiResponse({ status: 200, description: 'Detalles de la orden previsualizada y precios finales' })
-  previewOrder(@Body() previewRequest: any) {
-    return this.alojamientosService.previewOrder(previewRequest);
-  }
-
+  @HttpCode(200)
+  async preview(@Body() b: any, @Req() req: any) { validateContract('OrderPreviewRequest', b); return this.service.preview(b, await this.service.auth(req)); }
   @Post('orders/create')
-  @ApiTags('Gestión de Órdenes (Reservas)')
-  @ApiSecurity('OAuth2Security', ['alojamientos:book'])
-  @ApiOperation({ summary: 'Crear reserva de alojamiento' })
-  @ApiHeader({ name: 'Idempotency-Key', required: true, description: 'UUID v4 para evitar cobros duplicados' })
-  @ApiResponse({ status: 201, description: 'Orden creada exitosamente' })
-  @ApiResponse({ status: 400, description: 'Petición inválida' })
-  @ApiResponse({ status: 409, description: 'Conflicto (habitación no disponible, cambio de precio)' })
-  @HttpCode(HttpStatus.CREATED)
-  @UseGuards(IdempotencyKeyGuard)
-  createOrder(
-    @Headers('Idempotency-Key') idempotencyKey: string,
-    @Body() createRequest: any,
-  ) {
-    return this.alojamientosService.createOrder(createRequest);
+  async createOrder(@Body() b: any, @Req() req: any, @Headers('idempotency-key') key: string) { validateContract('OrderCreateRequest', b); return this.service.mutateOrder('create', '', b, key, await this.service.auth(req)); }
+  @Post('orders/:id/modify')
+  @HttpCode(200)
+  async changeOrder(@Param('id') id: string, @Body() b: any, @Req() req: any, @Headers('idempotency-key') key: string) {
+    validateContract('OrderModifyRequest', b);
+    return this.service.mutateOrder('modify', id, b || {}, key, await this.service.auth(req));
   }
-
-  @Get('orders/:orderId')
-  @ApiTags('Gestión de Órdenes (Reservas)')
-  @ApiSecurity('OAuth2Security', ['alojamientos:read'])
-  @ApiOperation({ summary: 'Obtener detalles de la orden' })
-  @ApiParam({ name: 'orderId', type: 'string', format: 'uuid' })
-  @ApiResponse({ status: 200, description: 'Detalles completos de la orden' })
-  @ApiResponse({ status: 404, description: 'Orden no encontrada' })
-  getOrder(@Param('orderId', ParseUUIDPipe) orderId: string) {
-    return this.alojamientosService.getOrder(orderId);
+  @Post('orders/:id/cancel')
+  @HttpCode(200)
+  async cancelOrder(@Param('id') id: string, @Body() b: any, @Req() req: any, @Headers('idempotency-key') key: string) {
+    return this.service.mutateOrder('cancel', id, b || {}, key, await this.service.auth(req));
   }
-
-  @Post('orders/:orderId/modify')
-  @ApiTags('Gestión de Órdenes (Reservas)')
-  @ApiSecurity('OAuth2Security', ['alojamientos:book'])
-  @ApiOperation({ summary: 'Modificar una orden existente' })
-  @ApiParam({ name: 'orderId', type: 'string', format: 'uuid' })
-  @ApiHeader({ name: 'Idempotency-Key', required: true, description: 'UUID v4 para evitar modificaciones duplicadas' })
-  @ApiResponse({ status: 200, description: 'Orden modificada' })
-  @ApiResponse({ status: 409, description: 'Conflicto' })
-  @UseGuards(IdempotencyKeyGuard)
-  modifyOrder(
-    @Headers('Idempotency-Key') idempotencyKey: string,
-    @Param('orderId', ParseUUIDPipe) orderId: string,
-    @Body() modifyRequest: any,
-  ) {
-    return this.alojamientosService.modifyOrder(orderId, modifyRequest);
-  }
-
-  @Post('orders/:orderId/cancel')
-  @ApiTags('Gestión de Órdenes (Reservas)')
-  @ApiSecurity('OAuth2Security', ['alojamientos:cancel'])
-  @ApiOperation({ summary: 'Cancelar una orden' })
-  @ApiParam({ name: 'orderId', type: 'string', format: 'uuid' })
-  @ApiHeader({ name: 'Idempotency-Key', required: true, description: 'UUID v4 para evitar cancelaciones duplicadas' })
-  @ApiResponse({ status: 200, description: 'Cancelación procesada' })
-  @ApiResponse({ status: 409, description: 'Conflicto' })
-  @UseGuards(IdempotencyKeyGuard)
-  cancelOrder(
-    @Headers('Idempotency-Key') idempotencyKey: string,
-    @Param('orderId', ParseUUIDPipe) orderId: string,
-  ) {
-    return this.alojamientosService.cancelOrder(orderId);
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  //  Webhooks
-  // ══════════════════════════════════════════════════════════════════════════
-
   @Get('webhooks')
-  @ApiTags('Webhooks')
-  @ApiSecurity('OAuth2Security', ['alojamientos:webhooks'])
-  @ApiOperation({ summary: 'Listar suscripciones' })
-  @ApiResponse({ status: 200, description: 'Suscripciones activas' })
-  listWebhooks() {
-    return this.alojamientosService.listWebhooks();
-  }
-
+  async webhooks(@Req() req: any) { const u = await this.service.auth(req, true); return (await this.service.database.db.manager.findBy<any>('webhook_subscriptions', { ownerId: u.id })).map(({ secret: _secret, ...rest }) => rest); }
   @Post('webhooks')
-  @ApiTags('Webhooks')
-  @ApiSecurity('OAuth2Security', ['alojamientos:webhooks'])
-  @ApiOperation({ summary: 'Registrar webhook' })
-  @ApiResponse({ status: 201, description: 'Webhook registrado' })
-  @HttpCode(HttpStatus.CREATED)
-  createWebhook(@Body() webhookSubscription: any) {
-    return this.alojamientosService.createWebhook(webhookSubscription);
+  async subscribe(@Body() b: any, @Req() req: any) {
+    validateContract('WebhookSubscription', b);
+    const u = await this.service.auth(req, true);
+    if (!b.url.startsWith('https://') || !b.events.length || !b.secret || b.secret.length < 16) throw new BadRequestException('HTTPS, eventos y secreto de 16 caracteres requeridos');
+    return this.service.database.transaction(async em => {
+      if (await em.findOneBy<any>('webhook_subscriptions', { id: b.id })) throw new BadRequestException('Suscripción existente');
+      await em.save<any, any>('webhook_subscriptions', { id: b.id, ownerId: u.id, url: b.url, events: b.events, secret: b.secret });
+      return { id: b.id, url: b.url, events: b.events };
+    });
   }
-
   @Delete('webhooks/:id')
-  @ApiTags('Webhooks')
-  @ApiSecurity('OAuth2Security', ['alojamientos:webhooks'])
-  @ApiOperation({ summary: 'Eliminar suscripción' })
-  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
-  @ApiResponse({ status: 204, description: 'Eliminado' })
-  @HttpCode(HttpStatus.NO_CONTENT)
-  deleteWebhook(@Param('id', ParseUUIDPipe) id: string) {
-    return this.alojamientosService.deleteWebhook(id);
+  @HttpCode(204)
+  async unsubscribe(@Param('id') id: string, @Req() req: any) { const u = await this.service.auth(req, true); await this.service.database.db.manager.delete('webhook_subscriptions', { id, ownerId: u.id }); }
+  @Post('reviews/scores')
+  @HttpCode(200)
+  async scores(@Body() b: any) { validateContract('ReviewsScoresRequest', b); const hotels = await this.service.catalog(); return wrap(hotels.filter(h => b.accommodations.includes(h.id)).map(h => ({ accommodation: h.id, score: h.score, count: h.reviews.length }))); }
+  @Post('details/changes')
+  @HttpCode(200)
+  async changes(@Body() b: any, @Req() req: any) {
+    validateContract('DetailsChangesRequest', b); await this.service.auth(req);
+    const hotels = (await this.service.catalog(true)).filter(h => h.updatedAt >= b.last_change && (!b.filters?.cities || b.filters.cities.includes(h.cityId)) && (!b.filters?.countries || b.filters.countries.includes('ec')));
+    return wrap({ from: b.last_change, next: new Date().toISOString(), total_changes: hotels.length, changes: { accommodations: hotels.map(h => ({ id: h.id, updated_at: h.updatedAt, published: h.published })) } });
+  }
+  @Post(':action')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Operaciones públicas definidas en el contrato API-first' })
+  async publicAction(@Param('action') action: string, @Body() b: any, @Headers('x-device-fingerprint') fingerprint: string,@Req() req:any) {
+    b = b || {};
+    const schemas = { search: 'SearchAccommodationRequest', availability: 'AvailabilityRequest', 'bulk-availability': 'BulkAvailabilityRequest', details: 'AccommodationDetailsRequest', constants: 'ConstantsRequest', reviews: 'ReviewsRequest' };
+    if (schemas[action]) validateContract(schemas[action], b);
+    const em = this.service.database.db.manager;
+    const user=['search','availability','bulk-availability'].includes(action)&&(req.headers.authorization||req.headers.cookie?.includes('booking_session='))?await this.service.auth(req):undefined;
+    if (action === 'search') { if (!fingerprint) throw new BadRequestException('X-Device-Fingerprint es obligatorio'); return this.service.search(b,user); }
+    if (action === 'availability') return this.service.database.transaction(tx => this.service.availability(b, tx,user));
+    if (action === 'bulk-availability') return this.service.database.transaction(async tx => wrap(await Promise.all(b.accommodations.map(async accommodation => (await this.service.availability({ ...b, accommodation }, tx,user)).data))));
+    if (action === 'details') return wrap((await this.service.catalog()).filter(h => (!b.accommodations || b.accommodations.includes(h.id)) && (!b.city || b.city === h.cityId) && (!b.country || b.country === 'ec')));
+    if (action === 'chains') return wrap((await em.find<any>('chains')).map(c => ({ ...c, brands: [] })));
+    if (action === 'constants') return wrap({ cities: await em.find<any>('cities'), facilities: await em.find<any>('facilities'), room_types: ['Habitación estándar'], currency: ['USD'] });
+    if (action === 'reviews') return wrap((await this.service.catalog()).filter(h => b.accommodations.includes(h.id)).flatMap(h => h.reviews));
+    throw new NotFoundException('Operación no encontrada');
   }
 }

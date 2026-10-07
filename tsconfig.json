@@ -17,5 +17,11 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false
-  }
+  },
+  "include": [
+    "src/main.ts",
+    "src/app.module.ts",
+    "src/modules/alojamientos/**/*.ts",
+    "src/common/**/*.ts"
+  ]
 }

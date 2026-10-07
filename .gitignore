@@ -1,5 +1,6 @@
 # compiled output
 /dist
+/public/assets
 /node_modules
 
 # Logs
@@ -37,3 +38,17 @@ lerna-debug.log*
 .env
 .env.test
 .env.production
+data/
+artifacts/
+test-results/
+playwright-report/
+.vercel/
+.env.*
+!.env.example
+
+.vercel
+.env*
+# Archivos privados y resultados generados
+.env*
+!.env.example
+/public/swagger/

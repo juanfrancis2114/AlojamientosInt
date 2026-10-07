@@ -1,0 +1,35 @@
+syntax = "proto3";
+package booking.alojamientos.v1;
+
+// Contrato preliminar para un servicio interno futuro.
+// RDA 1 no abre un puerto gRPC en Vercel.
+service AlojamientosCatalogo {
+  rpc ObtenerAlojamiento(ObtenerAlojamientoRequest) returns (Alojamiento);
+  rpc ListarAlojamientos(FiltroAlojamientos) returns (stream Alojamiento);
+}
+
+message ObtenerAlojamientoRequest {
+  int32 id = 1;
+}
+
+message FiltroAlojamientos {
+  string nombre = 1;
+  // Cero significa sin límite de precio o ciudad en esta primera versión.
+  int64 precio_maximo_centavos = 2;
+  int32 ciudad_id = 3;
+}
+
+message Alojamiento {
+  int32 id = 1;
+  string nombre = 2;
+  string destino = 3;
+  string descripcion = 4;
+  // Entero en centavos: evita ambigüedad de coma flotante en el transporte.
+  int64 precio_por_noche_centavos = 5;
+  string moneda = 6;
+  int32 capacidad_adultos = 7;
+  int32 capacidad_ninos = 8;
+  int32 habitaciones = 9;
+  bool tiene_piscina = 10;
+  repeated string servicios = 11;
+}

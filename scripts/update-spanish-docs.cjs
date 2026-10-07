@@ -1,0 +1,12 @@
+const fs = require('node:fs');
+const { tables, columns } = require('./spanish-schema.cjs');
+let architecture = fs.readFileSync('docs/arquitectura.md', 'utf8');
+for (const [oldName, newName] of Object.entries({ ...tables, ...columns })) architecture = architecture.replace(new RegExp('\\b' + oldName + '\\b', 'g'), newName);
+architecture += '\nLa migración `002_nombres_espanol.sql` renombra tablas y columnas sin borrar registros. TypeORM conserva los identificadores internos y los campos exigidos por el contrato de APIs mediante un mapeo explícito a los nombres físicos en español. Las claves foráneas, índices y permisos se conservan durante el renombrado.\n';
+fs.writeFileSync('docs/arquitectura.md', architecture);
+let deploy = fs.readFileSync('docs/despliegue.md', 'utf8');
+deploy = deploy.replace('ejecutar `supabase/migrations/001_booking.sql` una vez.', 'ejecutar `supabase/migrations/001_booking.sql` y después `supabase/migrations/002_nombres_espanol.sql`, una vez cada una.');
+deploy = deploy.replace('aplica la misma migración inicial. No hace cambios si detecta la fila/tabla de control de una instalación anterior.', 'aplica ambas migraciones y detecta si el renombrado al español ya está aplicado.');
+deploy = deploy.replace('| DATABASE_SSL | true |', '| DATABASE_SSL | true |\n| DATABASE_CA | Certificado PEM oficial de Supabase; copia local en `certificates/supabase-ca.crt` |');
+deploy += '\nPara SSL se usa el certificado raíz oficial de Supabase: https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt. `DATABASE_CA` contiene el PEM completo; en `.env` se guarda entre comillas con saltos de línea reales. La verificación TLS permanece habilitada.\n';
+fs.writeFileSync('docs/despliegue.md', deploy);

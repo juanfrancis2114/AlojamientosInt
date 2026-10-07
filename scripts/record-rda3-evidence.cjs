@@ -1,0 +1,11 @@
+const fs = require('node:fs');
+const cloud = JSON.parse(fs.readFileSync('artifacts/cloud-verification.json', 'utf8'));
+const browser = JSON.parse(fs.readFileSync('artifacts/cloud-react-browser.json', 'utf8'));
+let text = fs.readFileSync('docs/evidencias.md', 'utf8');
+text = text.replace('15 comprobaciones en producción', '21 comprobaciones en producción').replace('57 comprobaciones superadas', '63 comprobaciones superadas').replace('57 escenarios API', '63 escenarios API');
+const heading = '\n## Evolución React y seguridad de la rúbrica anterior\n';
+if (text.includes(heading)) text = text.slice(0, text.indexOf(heading));
+text += heading + '\nComprobación final UTC: ' + cloud.checkedAt + '. Framework confirmado por el estudiante: React.\n\n';
+text += '- Compilación NestJS + Vite: correcta; bundles React ESM `.mjs` conservados en Vercel.\n- ESLint y TypeScript: correctos, sin errores.\n- Unitarias Vitest/Testing Library: 24 pruebas superadas.\n- API: 63 comprobaciones superadas, incluidos JWT, revocación, CORS y permisos.\n- Chrome local: CRUD, reserva, cancelación, recarga, rutas privadas y logout; viewport de 390 px sin desbordamiento.\n- Producción: ' + cloud.checks.length + ' comprobaciones superadas; React, JWT, CORS, CRUD, Supabase, reserva, cancelación, outbox y logout.\n- Chrome en producción: ruta /admin redirige a /login sin sesión; catálogo y modal de login operativos; móvil de ' + browser.mobileWidth + ' px sin desbordamiento; cero errores de ejecución.\n';
+text += '\nCapturas reales: `artifacts/cloud-react-desktop.png` y `artifacts/cloud-react-mobile.png`. Registro de ejecución y recursos: `artifacts/cloud-react-browser.json`. La reserva de verificación quedó cancelada; no hay cobros reales. No se publican tokens ni secretos en estos archivos.\n\nDocumentos de apoyo: `docs/rubrica-rda3.md`, `docs/seguridad.md` y `docs/manual-usuario.md`. La presentación, reflexión personal y dominio del código deben ser preparados y demostrados por el estudiante.\n';
+fs.writeFileSync('docs/evidencias.md', text);

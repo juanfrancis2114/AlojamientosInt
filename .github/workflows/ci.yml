@@ -1,0 +1,39 @@
+name: Validar Kawsay Estancias
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: booking_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d booking_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --include=dev
+      - run: npm run build
+      - run: npm run check
+      - run: npm run lint
+      - run: npm run test:unit
+      - run: npm run test:postgres
+      - run: node test/catalog.cjs
+      - name: Pruebas API contra PostgreSQL real de CI
+        run: node test/integration.cjs
+        env:
+          CI: 'true'
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/booking_test
