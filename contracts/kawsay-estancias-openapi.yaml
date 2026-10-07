@@ -653,6 +653,27 @@ paths:
           $ref: "#/components/responses/ProblemDetails403"
         "409":
           $ref: "#/components/responses/ProblemDetails409"
+  /auth/session:
+    get:
+      operationId: get_auth_session
+      tags:
+        - Identidad
+      summary: Consultar la sesión al abrir la web, incluso como visitante
+      description: Devuelve HTTP 200 con user=null cuando no hay sesión válida. Una
+        sesión válida devuelve su identidad. No concede acceso a operaciones
+        protegidas, que siguen devolviendo 401 o 403 según corresponda.
+      security: []
+      responses:
+        "200":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
   /auth/logout:
     post:
       operationId: post_auth_logout
@@ -1748,6 +1769,33 @@ components:
             $ref: "#/components/schemas/OutboxEvent"
         next_page:
           type: string
+          nullable: true
+    SessionResponse:
+      type: object
+      required:
+        - user
+      properties:
+        user:
+          type: object
+          required:
+            - id
+            - name
+            - email
+            - role
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            email:
+              type: string
+              format: email
+            role:
+              type: string
+              enum:
+                - admin
+                - customer
           nullable: true
   responses:
     ProblemDetails400:
