@@ -2,7 +2,7 @@
 openapi: 3.0.3
 info:
   title: Kawsay Estancias API — contrato propio
-  version: 1.2.0
+  version: 1.3.0
   description: "Contrato propio del dominio de alojamientos de Kawsay Estancias.
     Es la fuente de esquemas para validación AJV y documentación del núcleo
     REST. Conserva nombres de operaciones compatibles con la plantilla
@@ -678,6 +678,38 @@ paths:
           $ref: "#/components/responses/ProblemDetails403"
         "409":
           $ref: "#/components/responses/ProblemDetails409"
+  /admin/erp/usuarios:
+    post:
+      operationId: post_admin_erp_usuarios
+      tags:
+        - Identidad
+      summary: Crear un usuario o un administrador desde una cuenta administradora
+      description: "Solo un administrador activo puede crear usuarios administrativos.
+        Sin sesión: 401. Un viajero: 403. La cuenta del actor y su rol actual se
+        vuelven a comprobar dentro de la transacción. El registro público asigna
+        siempre customer. La operación queda en auditoría y nunca devuelve la
+        contraseña ni su hash."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUserCreate"
+      responses:
+        "201":
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserView"
+        "400":
+          $ref: "#/components/responses/ProblemDetails400"
+        "401":
+          $ref: "#/components/responses/ProblemDetails401"
+        "403":
+          $ref: "#/components/responses/ProblemDetails403"
+        "409":
+          $ref: "#/components/responses/ProblemDetails409"
   /catalog:
     get:
       operationId: get_catalog
@@ -1226,6 +1258,68 @@ components:
           minLength: 10
           maxLength: 128
           writeOnly: true
+    AdminUserCreate:
+      type: object
+      required:
+        - nombre
+        - correo
+        - rol
+        - activo
+        - contrasena
+      properties:
+        nombre:
+          type: string
+          minLength: 2
+          maxLength: 100
+          pattern: ^[\p{L}\p{M}]+(?:[ '\-][\p{L}\p{M}]+)*$
+          description: "Nombre personal: letras, tildes, espacios, apóstrofes y guiones.
+            Sin números."
+        correo:
+          type: string
+          format: email
+          maxLength: 254
+        rol:
+          type: string
+          enum:
+            - customer
+            - admin
+          description: Solo un administrador activo puede asignar el rol admin.
+        activo:
+          type: boolean
+        contrasena:
+          type: string
+          minLength: 10
+          maxLength: 128
+          writeOnly: true
+      additionalProperties: false
+    AdminUserView:
+      type: object
+      required:
+        - id
+        - nombre
+        - correo
+        - rol
+        - activo
+        - fecha_creacion
+      properties:
+        id:
+          type: string
+          format: uuid
+        nombre:
+          type: string
+        correo:
+          type: string
+          format: email
+        rol:
+          type: string
+          enum:
+            - customer
+            - admin
+        activo:
+          type: boolean
+        fecha_creacion:
+          type: string
+          format: date-time
     User:
       type: object
       required:
