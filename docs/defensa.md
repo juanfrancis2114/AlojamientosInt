@@ -8,7 +8,7 @@
 4. Confirmar una reserva de demostración. Mostrar localizador y Mis reservas. Recargar para evidenciar persistencia.
 5. Modificar fechas, revisar el nuevo precio y cancelar. Explicar que la cancelación libera habitaciones.
 6. Abrir Swagger y el contrato descargable. Señalar las tres operaciones del flujo de reserva y el header Idempotency-Key.
-7. En administración, mostrar eventos ORDER_CONFIRMED y ORDER_CANCELLED, y la actividad del CRUD. Explicar que la entrega externa pertenece a la integración futura.
+7. En administración, mostrar dashboard, gastos, usuarios y actividad del CRUD. Explicar la outbox preparada en backend para integración futura.
 8. Mostrar en Supabase las tablas y claves foráneas. Mostrar resultados de pruebas automatizadas y el diagrama de arquitectura.
 
 ## Preguntas que debes poder responder

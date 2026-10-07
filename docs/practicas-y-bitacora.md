@@ -58,10 +58,10 @@ En gRPC se conservarán los números de campo del .proto, se convertirán tarifa
 - Solicitud: adaptar la plantilla Booking al reto RDA 1 y contrastarla con teoría y prácticas.
 - Verificación automatizada: matriz REST, permisos, cotizaciones, idempotencia, concurrencia, persistencia tras reinicio y revisión de interfaz en navegador.
 - Verificación manual del estudiante: **pendiente de completar por el estudiante**, indicando qué endpoints ejecutó, qué cambió y qué decisiones puede explicar.
-- Evidencias de nube: **pendientes** hasta conectar Supabase y publicar/verificar Vercel.
+- Evidencias de nube: Vercel y Supabase publicados; 43 comprobaciones públicas aprobadas el 7 de octubre de 2026.
 
-Las prácticas incluyen pautas de uso de IA de nivel 2–3. Esta declaración describe el trabajo realmente realizado, sin atribuir al estudiante revisiones manuales ni un nivel de uso que aún no haya comprobado. Antes de la defensa, ejecutar la matriz y completar la reflexión con palabras propias. No se han realizado commits ni push como supuestas evidencias del estudiante.
+Las prácticas incluyen pautas de uso de IA de nivel 2–3. Esta declaración describe el trabajo realmente realizado, sin atribuir al estudiante revisiones manuales ni un nivel de uso que aún no haya comprobado. Antes de la defensa, ejecutar la matriz y completar la reflexión con palabras propias. El repositorio contiene commits y pruebas CI reales; la autoría y revisión personal del estudiante deben explicarse con honestidad.
 
 ## Integración continua
 
-`.github/workflows/ci.yml` prepara un PostgreSQL 16 efímero llamado booking_test, aplica la misma migración y ejecuta las pruebas de API contra ese servidor. La base de CI no usa credenciales de Supabase. El inicializador de pruebas acepta únicamente una base local booking_test y CI=true para evitar ejecutarse contra producción. El workflow está preparado; **no se afirma que GitHub Actions haya corrido** mientras no exista una ejecución real en un repositorio propio del estudiante.
+`.github/workflows/ci.yml` prepara un PostgreSQL 16 efímero llamado booking_test, aplica la misma migración y ejecuta las pruebas de API contra ese servidor. La base de CI no usa credenciales de Supabase. El inicializador de pruebas acepta únicamente una base local booking_test y CI=true para evitar ejecutarse contra producción. GitHub Actions completó correctamente la ejecución 37635443763 en el repositorio propio, para el commit 3600f37.

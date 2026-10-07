@@ -41,6 +41,12 @@ React consume APIs del mismo origen mediante Fetch. React Router protege `/reser
 | categorias_gasto | Clasificación de gastos operativos | Padre de gastos |
 | gastos | Concepto, proveedor, importe, fecha, estado y notas | categoria_id → categorias_gasto; alojamiento_id → alojamientos opcional; actor_id → usuarios |
 | bloqueo_transacciones | Fila común para serializar cambios de inventario | id=1 |
+| perfiles_usuario | Contacto y documento privados | usuario_id → usuarios; perfil único |
+| calendario_tarifas | Precio, cupo y cierre por fecha | alojamiento y administrador |
+| facturas | Documento simulado y versionado | reserva y propietario |
+| detalles_factura | Líneas del documento y subtotales | factura_id → facturas |
+| resenas_estancia | Opinión de estancia completada y respuesta | reserva, usuario, alojamiento y administrador |
+| imagenes_alojamiento | Cuatro fotos ordenadas con créditos | alojamiento_id → alojamientos; posición y URL únicas |
 
 ```mermaid
 erDiagram
@@ -74,11 +80,11 @@ Cada habitación representa inventario compartido del alojamiento. El cupo se ca
 
 Consultar disponibilidad genera un producto válido 15 minutos; previsualizar genera una cotización válida 10 minutos. Al confirmar, se vuelve a verificar cupo, precio, propietario y vencimiento. La reserva, respuesta idempotente y evento outbox se guardan en una única transacción. En PostgreSQL se bloquea `bloqueo_transacciones` con `SELECT FOR UPDATE`, lo que impide sobreventa entre instancias de Vercel. El bloqueo global simplifica la defensa y sacrifica concurrencia; en una evolución se reemplazaría por bloqueos por propiedad/fecha.
 
-En desarrollo se usa SQL.js con archivo persistente `datos/booking.sqlite`, para ejecutar sin Docker. Es un adaptador local, **no la base de datos de producción**. En Vercel DATABASE_URL es obligatoria y se prohíbe arrancar con almacenamiento local. La migración de producción se aplica explícitamente; `synchronize` está desactivado en PostgreSQL.
+En desarrollo se usa SQL.js con archivo persistente `data/booking.sqlite`, para ejecutar sin Docker. Es un adaptador local, **no la base de datos de producción**. En Vercel DATABASE_URL es obligatoria y se prohíbe arrancar con almacenamiento local. La migración de producción se aplica explícitamente; `synchronize` está desactivado en PostgreSQL.
 
 ## Límites del prototipo
 
-Una habitación estándar y un plan de tarifa por alojamiento; las tablas admiten ampliación. La administración inicial gestiona la foto principal, WiFi y piscina; los catálogos y reseñas se cargan como datos de demostración. No se integra un GDS real, proveedor de pagos ni IdP OAuth2. Las reseñas semilla se etiquetan como demostración. Las cadenas son un catálogo preliminar, sin relación activa con hoteles. Los eventos se persisten y se consultan, pero no se entregan automáticamente. El límite de intentos de autenticación es por instancia; un servicio distribuido debe sustituirlo si crece el uso.
+Una habitación estándar y un plan de tarifa por alojamiento; las tablas admiten ampliación. La administración gestiona cuatro fotos ordenadas, WiFi y piscina; los catálogos y reseñas se cargan como datos de demostración. No se integra un GDS real, proveedor de pagos ni IdP OAuth2. Las reseñas semilla se etiquetan como demostración. Las cadenas son un catálogo preliminar, sin relación activa con hoteles. Los eventos se persisten y se consultan, pero no se entregan automáticamente. El límite de intentos de autenticación es por instancia; un servicio distribuido debe sustituirlo si crece el uso.
 
 La migración `002_nombres_espanol.sql` renombra tablas y columnas sin borrar registros. TypeORM conserva los identificadores internos y los campos exigidos por el contrato de APIs mediante un mapeo explícito a los nombres físicos en español. Las claves foráneas, índices y permisos se conservan durante el renombrado.
 

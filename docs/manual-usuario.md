@@ -29,4 +29,10 @@ Eliminar pide confirmación. Una propiedad con historial de reservas o cotizacio
 
 ## Mensajes y solución de problemas
 
+La estancia muestra cuatro fotografías ilustrativas, con miniaturas, flechas y créditos; desplazar la ventana hacia abajo para consultar disponibilidad. En Administración → Alojamientos → Imágenes se editan las cuatro fotos y su orden. La primera es la portada.
+
+Mi perfil permite actualizar datos personales. Mis reservas permite consultar facturas simuladas e imprimirlas como PDF, y opinar sobre una estancia completada. El administrador responde reseñas y configura precios, cupo y cierre por fecha en Calendario y tarifas. Las facturas se versionan al modificar una reserva y se anulan al cancelarla; no son documentos fiscales del SRI.
+
+Si ya existe una reserva propia confirmada en el mismo alojamiento, no se puede repetir ni solapar ese intervalo. Cambiar las fechas o cancelar la reserva previa libera la selección; otros viajeros siguen sujetos al inventario disponible.
+
 Los formularios muestran errores junto al envío, mantienen los datos ingresados y evitan ejecutar repetidamente la acción mientras esperan. Si el catálogo no carga, comprobar la conexión y pulsar Reintentar. Si aparece un error de sesión, iniciar sesión nuevamente. Si una reserva no tiene cupo, cambiar fechas o cantidad de habitaciones. Nunca compartir la contraseña de la base de datos para utilizar la web.
