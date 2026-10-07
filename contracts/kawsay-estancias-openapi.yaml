@@ -2,7 +2,7 @@
 openapi: 3.0.3
 info:
   title: Kawsay Estancias API — contrato propio
-  version: 1.3.0
+  version: 1.3.1
   description: "Contrato propio del dominio de alojamientos de Kawsay Estancias.
     Es la fuente de esquemas para validación AJV y documentación del núcleo
     REST. Conserva nombres de operaciones compatibles con la plantilla
@@ -1307,6 +1307,10 @@ components:
           description: Solo un administrador activo puede asignar el rol admin.
         activo:
           type: boolean
+          enum:
+            - true
+          default: true
+          description: Las cuentas nuevas se crean siempre activas.
         contrasena:
           type: string
           minLength: 10
