@@ -15,6 +15,8 @@ Si cambió la disponibilidad o venció la cotización, consultar nuevamente ante
 
 ## Gestionar la cuenta y reservas
 
+Al crear o editar usuarios, el nombre debe tener de 2 a 100 caracteres y admitir solo letras, espacios, guiones y apóstrofes; se permiten tildes y ñ, pero no números. El correo debe ser válido, tener un único @ y no superar 254 caracteres. La contraseña debe tener entre 10 y 128 caracteres. Estas reglas se verifican en el navegador y en la API, también para el administrador y la edición del perfil.
+
 Mis reservas abre `/reservas`. Es una página privada y solicita iniciar sesión a visitantes. Permite consultar estancias, modificar fechas y huéspedes o cancelar una reserva confirmada. Revisar el total después de modificar; se aplica la tarifa vigente. La cancelación libera el inventario y conserva el historial.
 
 El botón con el nombre del usuario permite cerrar sesión. La sesión dura una hora; si vence, volver a iniciar sesión. El cierre de sesión invalida el token en el servidor. Un cliente no puede abrir administración ni consultar reservas ajenas.

@@ -116,6 +116,8 @@ export class AlojamientosService implements OnModuleInit {
       .toLowerCase();
     if (
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+      email.length > 254 ||
+      typeof body.email !== 'string' ||
       typeof body.password !== 'string' ||
       body.password.length < 10 ||
       body.password.length > 128
@@ -127,8 +129,8 @@ export class AlojamientosService implements OnModuleInit {
       let user = await em.findOneBy<any>('users', { email });
       if (register) {
         if (user) throw new ConflictException('El correo ya está registrado');
-        if (typeof body.name !== 'string' || !body.name.trim() || body.name.length > 100)
-          throw new BadRequestException('Indica tu nombre (máximo 100 caracteres)');
+        if (typeof body.name !== 'string' || body.name.trim().length < 2 || body.name.trim().length > 100 || !/^[\p{L}\p{M}]+(?:[ '\-][\p{L}\p{M}]+)*$/u.test(body.name.trim()))
+          throw new BadRequestException('Nombre de 2 a 100 caracteres: letras, espacios, apóstrofes y guiones; sin números');
         user = await em.save<any, any>('users', {
           id: randomUUID(),
           email,

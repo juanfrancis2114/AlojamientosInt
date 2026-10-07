@@ -16,7 +16,7 @@ import {
 } from 'class-validator';
 const trim = ({ value }: any) => (typeof value === 'string' ? value.trim() : value);
 export class UsuarioDto {
-  @ApiProperty() @IsString() @MinLength(2) @MaxLength(100) @Transform(trim) nombre: string;
+  @ApiProperty() @IsString() @MinLength(2) @MaxLength(100) @Transform(trim) @Matches(/^[\p{L}\p{M}]+(?:[ '\-][\p{L}\p{M}]+)*$/u, { message: 'El nombre solo admite letras, espacios, apóstrofes y guiones; sin números' }) nombre: string;
   @ApiProperty({ format: 'email' })
   @IsEmail()
   @MaxLength(254)

@@ -39,6 +39,12 @@ async function api(path, body, token, method = body === undefined ? 'GET' : 'POS
   check((await api('admin/accommodations')).status === 401, 'Administración exige autenticación');
   const admin = (await api('auth/login', { email: 'admin@booking.local', password: 'AdminDemo2026!' })).body.access_token;
   check(!!admin, 'Inicio de sesión administrador');
+  const registration={name:'María José',email:'validacion@test.local',password:'ClienteDemo2026!'};
+  for(const [field,value] of [['name','Juan123'],['name','  '],['name','A'],['name','A'.repeat(101)],['email','uno@@test.local'],['email','a'.repeat(255)+'@test.local'],['password','corta'],['password','x'.repeat(129)]])check((await api('auth/register',{...registration,[field]:value})).status===400,'Registro rechaza '+field+' inválido: '+String(value).length+' caracteres');
+  const invalidUser={nombre:'Juan123',correo:'validacionadmin@test.local',rol:'customer',activo:true,contrasena:'ClienteDemo2026!'};
+  check((await api('admin/erp/usuarios',invalidUser,admin)).status===400,'Administrador no crea nombres con números');
+  check((await api('admin/erp/usuarios',{...invalidUser,nombre:'María José',correo:'uno@@test.local'},admin)).status===400,'Administrador rechaza doble arroba');
+  check((await api('admin/erp/usuarios',{...invalidUser,nombre:'María José',contrasena:'x'.repeat(129)},admin)).status===400,'Administrador rechaza contraseña de más de 128 caracteres');
   check(admin.split('.').length === 3 && JSON.parse(Buffer.from(admin.split('.')[1], 'base64url')).iss === 'booking-prototipo', 'Autenticación emite JWT con emisor');
   const tampered = admin.split('.'); const claims = JSON.parse(Buffer.from(tampered[1], 'base64url')); claims.sub = 'otro-usuario'; tampered[1] = Buffer.from(JSON.stringify(claims)).toString('base64url');
   check((await api('auth/me', undefined, tampered.join('.'))).status === 401, 'JWT alterado rechazado por la API');

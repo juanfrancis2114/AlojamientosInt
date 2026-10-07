@@ -1,3 +1,4 @@
+import { namePattern, nameHelp, emailHelp, validateUserInput } from './userValidation';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from './api';
@@ -35,6 +36,10 @@ export default function Login({ embedded = false, after }) {
               <input
                 className="form-control"
                 name="name"
+                minLength="2"
+                pattern={namePattern}
+                title={nameHelp}
+                onInput={validateUserInput}
                 required
                 maxLength="100"
                 autoComplete="name"
@@ -46,6 +51,9 @@ export default function Login({ embedded = false, after }) {
             <input
               className="form-control"
               name="email"
+              maxLength="254"
+              title={emailHelp}
+              onInput={validateUserInput}
               type="email"
               required
               autoComplete="email"
@@ -62,6 +70,7 @@ export default function Login({ embedded = false, after }) {
               maxLength="128"
               autoComplete={register ? 'new-password' : 'current-password'}
             />
+          <small className="muted">Entre 10 y 128 caracteres.</small>
           </label>
         </div>
         <div className="form-actions">

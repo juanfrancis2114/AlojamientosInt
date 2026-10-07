@@ -1,3 +1,4 @@
+import { namePattern, nameHelp, validateUserInput } from './userValidation';
 ﻿import { useBooking } from './context';
 import { useResource } from './useResource';
 import { api } from './api';
@@ -31,6 +32,9 @@ export default function Profile() {
               Nombre
               <input
                 name="nombre"
+                pattern={namePattern}
+                title={nameHelp}
+                onInput={validateUserInput}
                 className="form-control"
                 required
                 minLength="2"
