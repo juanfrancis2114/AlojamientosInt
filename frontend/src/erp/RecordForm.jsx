@@ -89,7 +89,12 @@ export default function RecordForm({ resource, record = {}, onClose }) {
                 ],
                 'customer',
               )}
-              {select(
+              {!record.id ? (
+                <>
+                  <input type="hidden" name="activo" value="true" />
+                  <p className="notice wide">Estado inicial: Activo. Puedes desactivar la cuenta después de crearla.</p>
+                </>
+              ) : select(
                 'activo',
                 'Estado',
                 [

@@ -1,6 +1,6 @@
 # Contrato propio de Kawsay Estancias
 
-Fuente: `contracts/kawsay-estancias-openapi.yaml`, OpenAPI 3.0.3, versión 1.3.0.
+Fuente: `contracts/kawsay-estancias-openapi.yaml`, OpenAPI 3.0.3, versión 1.3.1.
 
 Este contrato fue diseñado para el núcleo REST del proyecto. Sus 27 rutas y 35 esquemas documentan las solicitudes, respuestas, autenticación y reglas propias. Conserva nombres de operaciones compatibles con la plantilla académica, pero no importa sus esquemas ni usa servidores ficticios de Booking Hub.
 
@@ -28,5 +28,7 @@ El documento operativo `/api/openapi.json` combina este contrato del núcleo con
 ## Ejemplo de evolución con contrato primero
 
 La revisión 1.3.0 añade la definición explícita de creación de administradores. El commit `fb0b11f` registra `AdminUserCreate`, `AdminUserView`, la operación y sus permisos antes de implementar el botón dedicado, la revalidación transaccional y las pruebas de esta mejora.
+
+La revisión 1.3.1 exige `activo: true` al crear usuarios o administradores. El commit `d201b8c` registra esta regla antes de implementar el cambio. La desactivación posterior de cuentas existentes sigue disponible mediante edición o la acción Desactivar.
 
 Para probarla: iniciar sesión como administrador, abrir Usuarios y pulsar Crear administrador. Completar nombre, correo y contraseña. La cuenta creada puede acceder al centro de operaciones y crear otros administradores. Un viajero recibe HTTP 403 al llamar al mismo endpoint y una solicitud sin sesión recibe HTTP 401.

@@ -163,6 +163,11 @@ async function api(path, body, token, method = body === undefined ? 'GET' : 'POS
   const adminBody = {nombre:'Administrador adicional',correo:'admin-adicional@test.local',rol:'admin',activo:true,contrasena:'AdminAdicional2026!'};
   check((await api('admin/erp/usuarios',adminBody)).status===401,'Crear administrador exige sesión');
   check((await api('admin/erp/usuarios',adminBody,a)).status===403,'Un viajero no puede crear administradores');
+  for (const rol of ['customer', 'admin']) {
+    const inactiveBody = {...adminBody,correo:'inactivo-'+rol+'@test.local',rol,activo:false};
+    check((await api('admin/erp/usuarios',inactiveBody,admin)).status===400,'No permite crear cuenta inactiva: '+rol);
+    check(!(await api('admin/erp/usuarios',undefined,admin)).body.some(u=>u.correo===inactiveBody.correo),'La cuenta inactiva rechazada no se guarda: '+rol);
+  }
   const additionalAdmin=(await api('admin/erp/usuarios',adminBody,admin)).body;
   check(!!additionalAdmin.id&&additionalAdmin.rol==='admin'&&!additionalAdmin.hash_contrasena,'Administrador crea otro administrador sin exponer credenciales');
   conforms('AdminUserView', additionalAdmin);

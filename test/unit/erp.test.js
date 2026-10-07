@@ -4,6 +4,12 @@ import { vi } from 'vitest';
 const require = createRequire(import.meta.url);
 const { erpMetrics, ErpService } = require('../../dist/modules/alojamientos/erp.service');
 describe('Permisos de gestión de usuarios', () => {
+  it('rechaza la creación inactiva incluso si se llama directamente al servicio', async () => {
+    const database = { transaction: vi.fn() };
+    const service = new ErpService(database);
+    await expect(service.saveUser({ rol: 'customer', activo: false }, { id: 'admin', role: 'admin' })).rejects.toThrow('deben crearse activos');
+    expect(database.transaction).not.toHaveBeenCalled();
+  });
   it('rechaza a un viajero antes de guardar o abrir una transacción', async () => {
     const database = { transaction: vi.fn() };
     const service = new ErpService(database);
@@ -17,7 +23,7 @@ describe('Permisos de gestión de usuarios', () => {
   ])('revalida el rol y estado persistidos del actor: %j', async account => {
     const em = { findOneBy: vi.fn().mockResolvedValue(account), save: vi.fn() };
     const service = new ErpService({ transaction: fn => fn(em) });
-    await expect(service.saveUser({ rol: 'admin' }, { id: 'antiguo-admin', role: 'admin' })).rejects.toThrow('administradora activa');
+    await expect(service.saveUser({ rol: 'admin', activo: true }, { id: 'antiguo-admin', role: 'admin' })).rejects.toThrow('administradora activa');
     expect(em.save).not.toHaveBeenCalled();
   });
 });

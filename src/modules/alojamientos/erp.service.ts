@@ -130,6 +130,8 @@ export class ErpService {
   }
   async saveUser(input: any, actor: any, id?: string) {
     if (actor?.role !== 'admin') throw new ForbiddenException('Solo un administrador puede gestionar usuarios');
+    if (!id && input.activo !== true)
+      throw new BadRequestException('Los usuarios nuevos deben crearse activos');
     return this.database.transaction(async (em) => {
       const administrator = await em.findOneBy<any>('users', { id: actor.id });
       if (!administrator?.activo || administrator.role !== 'admin')
