@@ -68,10 +68,11 @@ export default function Login({ embedded = false, after }) {
               required
               minLength="10"
               maxLength="128"
+              aria-describedby="password-help"
               autoComplete={register ? 'new-password' : 'current-password'}
             />
-          <small className="muted">Entre 10 y 128 caracteres.</small>
           </label>
+          <small id="password-help" className="muted wide">Entre 10 y 128 caracteres.</small>
         </div>
         <div className="form-actions">
           <button type="submit" className="button primary">
