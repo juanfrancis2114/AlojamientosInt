@@ -22,6 +22,18 @@ const base = 'https://booking-prototipo-alojamientos.vercel.app';
     await page.locator('input[name=password]').fill(process.env.ADMIN_PASSWORD);
     await page.locator('#login-form button[type=submit]').click();
     await expect(page).toHaveURL(base + '/admin', { timeout: 30000 });
+    await expect(page.locator('[data-tab=tarifas], [data-tab=gastos], [data-tab=categorias]')).toHaveCount(0);
+    await expect(page.locator('[data-view=market], [data-view=orders]')).toHaveCount(0);
+    await page.goto(base + '/');
+    await expect(page).toHaveURL(base + '/admin', { timeout: 30000 });
+    await page.goto(base + '/reservas');
+    await expect(page).toHaveURL(base + '/admin', { timeout: 30000 });
+    const forbidden = await page.evaluate(async () => {
+      const result = await fetch('/api/v1/orders', { credentials: 'same-origin' });
+      return result.status;
+    });
+    assert.equal(forbidden, 403);
+    console.log('OK Admin sin secciones retiradas ni acceso a reservas personales');
     await page.locator('[data-tab=usuarios]').click();
     await page.getByRole('button', { name: '+ Crear administrador', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Crear administrador', exact: true })).toBeVisible();

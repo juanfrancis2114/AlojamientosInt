@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { NavLink, Route, Routes, useNavigate } from 'react-router-dom';
+import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
 import { useBooking } from './context';
 import Marketplace from './Marketplace';
 import Login from './Login';
@@ -13,13 +13,13 @@ function Header() {
   const navigate = useNavigate();
   return (
     <header className="header">
-      <NavLink className="brand" to="/" aria-label="Kawsay Estancias inicio">
+      <NavLink className="brand" to={user?.role === 'admin' ? '/admin' : '/'} aria-label="Kawsay Estancias inicio">
         <span className="brand-icon">k.</span>Kawsay<span className="brand-dot">Estancias</span>
       </NavLink>
       <nav aria-label="Navegación principal">
-        <button data-view="market" className="nav-link" onClick={() => navigate('/')}>
+        {user?.role !== 'admin' && <button data-view="market" className="nav-link" onClick={() => navigate('/')}>
           Explorar
-        </button>
+        </button>}
         {user?.role !== 'admin' && <button data-view="orders" className="nav-link" onClick={() => navigate('/reservas')}>
           Mis reservas
         </button>}
@@ -46,6 +46,7 @@ function Header() {
   );
 }
 export default function App() {
+  const { user, authLoading } = useBooking();
   return (
     <>
       <Header />
@@ -57,7 +58,7 @@ export default function App() {
         }
       >
         <Routes>
-          <Route path="/" element={<Marketplace />} />
+          <Route path="/" element={authLoading ? <div className="loading" role="status">Comprobando sesión…</div> : user?.role === 'admin' ? <Navigate to="/admin" replace /> : <Marketplace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/perfil" element={<ProtectedRoute><Profile/></ProtectedRoute>}/>
           <Route

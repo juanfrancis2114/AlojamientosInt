@@ -6,13 +6,10 @@ const modules = [
   ['dashboard', 'Resumen ejecutivo', '◈'],
   ['properties', 'Alojamientos', '⌂'],
   ['bookings', 'Reservas', '▣'],
-  ['tarifas', 'Calendario y tarifas', '▦'],
   ['facturas', 'Facturas simuladas', '▤'],
   ['resenas', 'Reseñas', '☆'],
-  ['gastos', 'Gastos', '＄'],
   ['usuarios', 'Usuarios', '♙'],
   ['ciudades', 'Destinos', '⌖'],
-  ['categorias', 'Categorías de gasto', '≡'],
   ['audit', 'Actividad', '◷'],
   ['docs', 'Documentación API', '↗'],
 ];
@@ -76,7 +73,7 @@ export default function Admin() {
               Consultar OpenAPI JSON ↗
             </a>
           </div>
-        ) : ['tarifas', 'facturas', 'resenas'].includes(tab) ? (
+        ) : ['facturas', 'resenas'].includes(tab) ? (
           <EstanciasAdmin key={tab} tab={tab} />
         ) : (
           <Management key={tab} tab={tab} />
